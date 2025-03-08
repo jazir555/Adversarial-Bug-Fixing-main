@@ -1,0 +1,6 @@
+{
+    "require": {
+        "leafo/lessphp": "^0.5.0",
+        "masterminds/html5": "^2.9"
+    }
+}
