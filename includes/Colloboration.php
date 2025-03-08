@@ -5,8 +5,8 @@ class Collaboration {
     }
 
     public function enqueue_scripts() {
-        wp_enqueue_script('adversarial-collaboration', plugins_url('assets/js/collaboration.js', __FILE__), ['jquery'], ADVERSARIAL_VERSION, true);
-        wp_enqueue_style('adversarial-collaboration-css', plugins_url('assets/css/collaboration.css', __FILE__), [], ADVERSARIAL_VERSION);
+        wp_enqueue_script('adversarial-collaboration', plugin_dir_url(__FILE__) . '../Assets/js/collaboration.js', ['jquery'], '1.0', true);
+        wp_enqueue_style('adversarial-collaboration-css', plugin_dir_url(__FILE__) . '../Assets/css/collaboration.css', [], '1.0');
     }
 
     public function collaboration_shortcode($atts) {
@@ -36,5 +36,5 @@ class Collaboration {
         </div>
         <?php
         return ob_get_clean();
-    }
-}
+        }
+        }

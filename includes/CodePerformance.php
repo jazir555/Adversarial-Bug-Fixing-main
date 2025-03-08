@@ -4,7 +4,15 @@ class CodePerformance {
                   "\n\nIdentify potential bottlenecks, suggest optimizations, and provide recommendations for improving performance.";
         
         $llm_handler = new LLMHandler();
-        return $llm_handler->call_llm_api($llm_handler->select_model('performance'), $prompt, 'analyze_performance', $language);
+        $response = $llm_handler->call_llm_api($llm_handler->select_model('performance'), $prompt, 'analyze_performance', $language);
+        if (isset($response['performance_analysis'])) {
+            return $response;
+        } else {
+            return [
+                'error' => 'Code performance analysis failed',
+                'details' => isset($response['error']) ? $response['error'] : 'Unknown error'
+            ];
+        }
     }
 
     public function optimize_code($code, $language) {
@@ -12,6 +20,14 @@ class CodePerformance {
                   "\n\nApply appropriate optimizations while maintaining code readability and functionality.";
         
         $llm_handler = new LLMHandler();
-        return $llm_handler->call_llm_api($llm_handler->select_model('optimization'), $prompt, 'optimize_code', $language);
+        $response =  $llm_handler->call_llm_api($llm_handler->select_model('optimization'), $prompt, 'optimize_code', $language);
+        if (isset($response['optimized_code'])) {
+            return $response;
+        } else {
+            return [
+                'error' => 'Code optimization failed',
+                'details' => isset($response['error']) ? $response['error'] : 'Unknown error'
+            ];
+        }
     }
 }

@@ -9,6 +9,22 @@ class ActivityLogging {
         add_action('adversarial_code_generated', [$this, 'log_code_generation']);
         add_action('adversarial_code_executed', [$this, 'log_code_execution']);
         add_action('adversarial_code_shared', [$this, 'log_code_sharing']);
+
+        // Schedule daily log rotation
+        add_action('daily_activity_log_rotation', [$this, 'rotate_logs']);
+        if (!wp_next_scheduled('daily_activity_log_rotation')) {
+            wp_schedule_event(strtotime('00:00:00 tomorrow'), 'daily', 'daily_activity_log_rotation');
+        }
+    }
+
+    public static function activate() {
+        if (! wp_next_scheduled('daily_activity_log_rotation')) {
+            wp_schedule_event(strtotime('00:00:00 tomorrow'), 'daily', 'daily_activity_log_rotation');
+        }
+    }
+
+    public static function deactivate() {
+        wp_clear_scheduled_hook('daily_activity_log_rotation');
     }
 
     public function log_code_generation($prompt, $code, $language) {
@@ -42,6 +58,7 @@ class ActivityLogging {
 
     private function write_log($type, $data) {
         $filename = $this->log_dir . "/activity_{$type}_" . date('Ymd') . '.log';
+        $this->rotate_logs_if_needed($filename); // Check and rotate logs before writing
         $log_entry = json_encode([
             'type' => $type,
             'data' => $data,
@@ -49,6 +66,32 @@ class ActivityLogging {
         ]) . "\n";
         
         file_put_contents($filename, $log_entry, FILE_APPEND);
+    }
+
+    private function rotate_logs_if_needed($filename) {
+        $max_file_size = 10 * 1024 * 1024; // 10MB
+        if (file_exists($filename) && filesize($filename) > $max_file_size) {
+            $this->rotate_log_file($filename);
+        }
+    }
+
+    private function rotate_log_file($filename) {
+        $file_parts = pathinfo($filename);
+        $log_dir = $file_parts['dirname'];
+        $base_filename = $file_parts['filename'];
+        $extension = $file_parts['extension'];
+        $new_filename = "{$log_dir}/{$base_filename}_rotated_" . date('Ymd_His') . ".{$extension}";
+        
+        if (!rename($filename, $new_filename)) {
+            error_log("Error rotating log file: {$filename}");
+        }
+    }
+
+    public function rotate_logs() {
+        $log_files = glob($this->log_dir . '/activity_*.log');
+        foreach ($log_files as $file) {
+            $this->rotate_logs_if_needed($file);
+        }
     }
 
     public function get_activity_logs($type = null, $limit = 100) {
@@ -72,3 +115,7 @@ class ActivityLogging {
         return array_slice($logs, 0, $limit);
     }
 }
+
+register_activation_hook(__FILE__, ['ActivityLogging', 'activate']);
+register_deactivation_hook(__FILE__, ['ActivityLogging', 'deactivate']);
+add_action('daily_activity_log_rotation', ['ActivityLogging', 'rotate_logs']);

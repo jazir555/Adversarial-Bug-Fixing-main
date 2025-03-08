@@ -57,4 +57,35 @@ class AutoSave {
         }
         return false;
     }
+
+    public function cleanup_autosaves($days_old = 7) {
+        $cutoff_timestamp = strtotime("-$days_old days");
+        $files_to_delete = glob("{$this->autosave_dir}/*.json");
+
+        foreach ($files_to_delete as $file) {
+            if (filemtime($file) < $cutoff_timestamp) {
+                unlink($file);
+            }
+        }
+    }
+
+    public function schedule_autosave_cleanup() {
+        if (! wp_next_scheduled('daily_autosave_cleanup')) {
+            wp_schedule_event(strtotime('03:00:00 tomorrow'), 'daily', 'daily_autosave_cleanup');
+        }
+    }
+
+    public static function activate() {
+        if (! wp_next_scheduled('daily_autosave_cleanup')) {
+            wp_schedule_event(strtotime('03:00:00 tomorrow'), 'daily', 'daily_autosave_cleanup');
+        }
+    }
+
+    public static function deactivate() {
+        wp_clear_scheduled_hook('daily_autosave_cleanup');
+    }
 }
+
+add_action('daily_autosave_cleanup', ['AutoSave', 'cleanup_autosaves']);
+register_activation_hook(__FILE__, ['AutoSave', 'activate']);
+register_deactivation_hook(__FILE__, ['AutoSave', 'deactivate']);

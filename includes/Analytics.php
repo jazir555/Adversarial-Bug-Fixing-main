@@ -5,7 +5,7 @@ class Analytics {
     public function __construct() {
         global $wpdb;
         $this->wpdb = $wpdb;
-        $this->table_name = $wpdb->prefix . 'adversarial_code_analytics';
+        $this->table_name = $wpdb->prefix . 'adversarial_basic_analytics';
         
         add_action('adversarial_log_activity', [$this, 'log_activity']);
     }
@@ -13,7 +13,7 @@ class Analytics {
     public function install() {
         $charset_collate = $this->wpdb->get_charset_collate();
         
-        $sql = "CREATE TABLE IF NOT EXISTS $this->table_name (
+        $sql = "CREATE TABLE IF NOT EXISTS {$this->table_name} (
             id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             user_id bigint(20) unsigned NOT NULL,
             activity_type varchar(50) NOT NULL,

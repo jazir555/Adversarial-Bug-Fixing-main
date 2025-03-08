@@ -34,17 +34,28 @@ class Exporter {
         $zip_file = $temp_dir . '/project.zip';
         
         if ($zip->open($zip_file, ZipArchive::CREATE) !== TRUE) {
-            throw new Exception("Failed to create zip archive");
+            throw new Exception("Failed to create zip archive: " . $zip->getStatusString());
         }
         
-        $zip->addGlob($project_dir . '/*');
-        $zip->close();
+        if (!$zip->addGlob($project_dir . '/*')) {
+            $zip->close();
+            throw new Exception("Failed to add files to zip archive.");
+        }
+        
+        if (!$zip->close()) {
+            throw new Exception("Failed to close zip archive.");
+        }
         
         // Read zip file contents
         $zip_contents = file_get_contents($zip_file);
+        if ($zip_contents === false) {
+            throw new Exception("Failed to read zip file contents.");
+        }
         
         // Clean up
-        wp_rmdir($temp_dir);
+        if (!wp_rmdir($temp_dir)) {
+            error_log("Exporter: Warning - Failed to delete temporary directory: " . $temp_dir);
+        }
         
         return [
             'filename' => 'code-export-' . date('Ymd-His') . '.zip',
@@ -54,11 +65,10 @@ class Exporter {
     
     private function export_to_github($version) {
         // Implement GitHub export logic
-        // This would typically involve creating a repository and uploading files
-        // For this example, we'll just return a placeholder response
+        // Implement GitHub export logic here (To be implemented in future)
         return [
-            'repository_url' => 'https://github.com/yourusername/yourrepository',
-            'commit_hash' => 'abc123'
+            'error' => 'GitHub export functionality is not fully implemented yet.',
+            'details' => 'GitHub export is a placeholder function. Full implementation will be added in a future version.'
         ];
     }
 }

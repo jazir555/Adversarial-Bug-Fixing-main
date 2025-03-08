@@ -34,7 +34,10 @@ class CodeExport {
                 <?php wp_nonce_field('export_code'); ?>
                 <div class="form-group">
                     <label for="code_to_export"><?php esc_html_e('Code to Export:', 'adversarial-code-generator'); ?></label>
-                    <textarea id="code_to_export" name="code" class="large-text code" rows="10" required></textarea>
+                    <div class="code-editor-wrapper export-code-editor-wrapper" data-language="python" data-theme="monokai">
+                        <textarea id="code_to_export" name="code" class="code-editor export-code-editor" rows="10" style="height: 300px;"></textarea>
+                    </div>
+                    <input type="hidden" id="code_to_export_value" name="code" class="code-editor-value" value="">
                 </div>
                 <div class="form-group">
                     <label for="export_filename"><?php esc_html_e('Filename:', 'adversarial-code-generator'); ?></label>
@@ -53,24 +56,46 @@ class CodeExport {
                         <option value="ruby">Ruby</option>
                     </select>
                 </div>
+                <script>
+                jQuery(document).ready(function($) {
+                    var exportCodeEditor = ace.edit($('.export-code-editor-wrapper .code-editor')[0]);
+                    exportCodeEditor.setTheme("ace/theme/monokai");
+                    exportCodeEditor.session.setMode("ace/mode/python");
+                    
+                    // Update hidden field on form submit - important for form submission to work with Ace editor
+                    $('.export-form').on('submit', function(e) {
+                        $('#code_to_export_value').val(exportCodeEditor.getValue());
+                    });
+                });
+                </script>
                 <button type="submit" class="button button-primary"><?php esc_html_e('Export Code', 'adversarial-code-generator'); ?></button>
             </form>
         </div>
         <?php
         return ob_get_clean();
-    }
-
-    private function get_file_extension($language) {
-        switch ($language) {
-            case 'python': return 'py';
-            case 'javascript': return 'js';
-            case 'java': return 'java';
-            case 'php': return 'php';
-            case 'cpp': return 'cpp';
-            case 'csharp': return 'cs';
-            case 'go': return 'go';
-            case 'ruby': return 'rb';
-            default: return 'txt';
         }
-    }
-}
+
+        private function get_file_extension($language)
+        {
+            switch ($language) {
+            case 'python': 
+                return 'py';
+            case 'javascript': 
+                return 'js';
+            case 'java': 
+                return 'java';
+            case 'php': 
+                return 'php';
+            case 'cpp': 
+                return 'cpp';
+            case 'csharp': 
+                return 'cs';
+            case 'go': 
+                return 'go';
+            case 'ruby': 
+                return 'rb';
+            default: 
+                return 'txt';
+            }
+        }
+        }

@@ -43,21 +43,31 @@ class CodeImport {
         </div>
         <?php
         return ob_get_clean();
-    }
-
-    private function detect_language($filename) {
-        $extension = pathinfo($filename, PATHINFO_EXTENSION);
-        
-        switch ($extension) {
-            case 'py': return 'python';
-            case 'js': return 'javascript';
-            case 'java': return 'java';
-            case 'php': return 'php';
-            case 'cpp': return 'cpp';
-            case 'cs': return 'csharp';
-            case 'go': return 'go';
-            case 'rb': return 'ruby';
-            default: return 'python';
         }
-    }
-}
+
+        private function detect_language($filename)
+        {
+            $extension = pathinfo($filename, PATHINFO_EXTENSION);
+        
+            switch ($extension) {
+            case 'py': 
+                return 'python';
+            case 'js': 
+                return 'javascript';
+            case 'java': 
+                return 'java';
+            case 'php': 
+                return 'php';
+            case 'cpp': 
+                return 'cpp';
+            case 'cs': 
+                return 'csharp';
+            case 'go': 
+                return 'go';
+            case 'rb': 
+                return 'ruby';
+            default: 
+                return 'python';
+            }
+        }
+        }

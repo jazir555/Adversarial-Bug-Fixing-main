@@ -6,7 +6,12 @@ class CodeHistory {
         $this->history_dir = trailingslashit($upload_dir['basedir']) . 'adversarial-code-generator/history';
         wp_mkdir_p($this->history_dir);
         
+        add_action('wp_enqueue_scripts', [$this, 'enqueue_scripts']);
         add_shortcode('adversarial_code_history', [$this, 'history_shortcode']);
+    }
+
+    public function enqueue_scripts() {
+        wp_enqueue_script('adversarial-code-history', plugin_dir_url(__FILE__) . '../Assets/js/code-history.js', ['jquery'], '1.0', true);
     }
 
     public function save_history($code, $language, $prompt, $user_id) {
@@ -89,5 +94,5 @@ class CodeHistory {
         </div>
         <?php
         return ob_get_clean();
-    }
-}
+        }
+        }

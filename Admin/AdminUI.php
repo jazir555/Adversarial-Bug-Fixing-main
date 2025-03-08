@@ -177,12 +177,14 @@ class AdminUI {
                             $test_command = isset($_POST['pipeline_test_command']) ? sanitize_text_field($_POST['pipeline_test_command']) : '';
                             
                             $ci = new CIIntegration();
-                            $ci->create_pipeline($name, [
+                            $ci->create_pipeline(
+                                $name, [
                                 'repository' => $repository,
                                 'branch' => $branch,
                                 'build_command' => $build_command,
                                 'test_command' => $test_command
-                            ]);
+                                ]
+                            );
                             
                             echo '<div class="notice notice-success"><p>' . esc_html__('Pipeline created successfully!', 'adversarial-code-generator') . '</p></div>';
                         } catch (Exception $e) {
@@ -239,5 +241,5 @@ class AdminUI {
             </div>
         </div>
         <?php
-    }
-}
+        }
+        }

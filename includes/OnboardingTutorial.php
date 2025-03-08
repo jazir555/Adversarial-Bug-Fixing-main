@@ -1,61 +1,79 @@
-class OnboardingTutorial {
-    public function __construct() {
+<?php
+class OnboardingTutorial
+{
+    public function __construct()
+    {
         add_action('admin_init', [$this, 'register_settings']);
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_scripts']);
         add_action('adversarial_code_generator_onboarding', [$this, 'show_onboarding_tutorial']);
+        add_action('wp_ajax_adversarial_complete_onboarding', [$this, 'complete_tutorial']);
     }
 
-    public function register_settings() {
+    public function enqueue_scripts()
+    {
+        wp_enqueue_script('adversarial-onboarding-tutorial', plugin_dir_url(__FILE__) . '../Assets/js/onboarding-tutorial.js', ['jquery'], '1.0', true);
+        wp_localize_script(
+            'adversarial-onboarding-tutorial', 'ajax_object', [
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('adversarial_onboarding_nonce'),
+            ]
+        );
+    }
+
+    public function register_settings()
+    {
         register_setting('adversarial_settings', 'adversarial_onboarding_completed');
     }
 
-    public function show_onboarding_tutorial() {
+    public function show_onboarding_tutorial()
+    {
         if (get_option('adversarial_onboarding_completed')) {
             return;
         }
-        
-        ?>
-        <div class="adversarial-onboarding-tutorial">
-            <div class="tutorial-header">
-                <h2><?php esc_html_e('Welcome to Adversarial Code Generator!', 'adversarial-code-generator'); ?></h2>
-                <p><?php esc_html_e('This quick tutorial will help you get started with the plugin.', 'adversarial-code-generator'); ?></p>
-            </div>
-            
-            <div class="tutorial-steps">
-                <div class="tutorial-step active" data-step="1">
-                    <h3><?php esc_html_e('Step 1: Configuration', 'adversarial-code-generator'); ?></h3>
-                    <p><?php esc_html_e('Configure your LLM API keys in the settings page.', 'adversarial-code-generator'); ?></p>
-                    <button class="button next-step"><?php esc_html_e('Next', 'adversarial-code-generator'); ?></button>
-                </div>
-                
-                <div class="tutorial-step" data-step="2">
-                    <h3><?php esc_html_e('Step 2: Generating Code', 'adversarial-code-generator'); ?></h3>
-                    <p><?php esc_html_e('Use the code generator to create your first piece of code.', 'adversarial-code-generator'); ?></p>
-                    <button class="button next-step"><?php esc_html_e('Next', 'adversarial-code-generator'); ?></button>
-                </div>
-                
-                <div class="tutorial-step" data-step="3">
-                    <h3><?php esc_html_e('Step 3: Refining Code', 'adversarial-code-generator'); ?></h3>
-                    <p><?php esc_html_e('Learn how to refine and improve your generated code.', 'adversarial-code-generator'); ?></p>
-                    <button class="button next-step"><?php esc_html_e('Next', 'adversarial-code-generator'); ?></button>
-                </div>
-                
-                <div class="tutorial-step" data-step="4">
-                    <h3><?php esc_html_e('Step 4: Execution', 'adversarial-code-generator'); ?></h3>
-                    <p><?php esc_html_e('Execute your code in a secure sandbox environment.', 'adversarial-code-generator'); ?></p>
-                    <button class="button next-step"><?php esc_html_e('Next', 'adversarial-code-generator'); ?></button>
-                </div>
-                
-                <div class="tutorial-step" data-step="5">
-                    <h3><?php esc_html_e('Step 5: Collaboration', 'adversarial-code-generator'); ?></h3>
-                    <p><?php esc_html_e('Explore collaboration features for team projects.', 'adversarial-code-generator'); ?></p>
-                    <button class="button complete-tutorial"><?php esc_html_e('Complete Tutorial', 'adversarial-code-generator'); ?></button>
-                </div>
-            </div>
-        </div>
-        <?php
+
+        echo '<div class="adversarial-onboarding-tutorial">';
+        echo '<div class="tutorial-header">';
+        echo '<h2>Welcome to Adversarial Code Generator!</h2>';
+        echo '<p>This quick tutorial will help you get started with the plugin.</p>';
+        echo '</div>';
+
+        echo '<div class="tutorial-steps">';
+        echo '<div class="tutorial-step active" data-step="1">';
+        echo '<h3>Step 1: Configuration</h3>';
+        echo '<p>Configure your LLM API keys in the settings page.</p>';
+        echo '<button class="button next-step">Next</button>';
+        echo '</div>';
+
+        echo '<div class="tutorial-step" data-step="2">';
+        echo '<h3>Step 2: Generating Code</h3>';
+        echo '<p>Use the code generator to create your first piece of code.</p>';
+        echo '<button class="button next-step">Next</button>';
+        echo '</div>';
+
+        echo '<div class="tutorial-step" data-step="3">';
+        echo '<h3>Step 3: Refining Code</h3>';
+        echo '<p>Learn how to refine and improve your generated code.</p>';
+        echo '<button class="button next-step">Next</button>';
+        echo '</div>';
+
+        echo '<div class="tutorial-step" data-step="4">';
+        echo '<h3>Step 4: Execution</h3>';
+        echo '<p>Execute your code in a secure sandbox environment.</p>';
+        echo '<button class="button next-step">Next</button>';
+        echo '</div>';
+
+        echo '<div class="tutorial-step" data-step="5">';
+        echo '<h3>Step 5: Collaboration</h3>';
+        echo '<p>Explore collaboration features for team projects.</p>';
+        echo '<button class="button complete-tutorial">Complete Tutorial</button>';
+        echo '</div>';
+        echo '</div>';
+        echo '</div>';
     }
 
-    public function complete_tutorial() {
+    public function complete_tutorial()
+    {
         update_option('adversarial_onboarding_completed', true);
+        wp_die();
     }
 }

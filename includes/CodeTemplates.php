@@ -1,6 +1,11 @@
 class CodeTemplates {
     public function __construct() {
+        add_action('wp_enqueue_scripts', [$this, 'enqueue_scripts']);
         add_shortcode('adversarial_code_template_library', [$this, 'template_library_shortcode']);
+    }
+
+    public function enqueue_scripts() {
+        wp_enqueue_script('adversarial-code-templates', plugin_dir_url(__FILE__) . '../Assets/js/code-templates.js', ['jquery'], '1.0', true);
     }
 
     public function template_library_shortcode($atts) {
@@ -24,13 +29,14 @@ class CodeTemplates {
         </div>
         <?php
         return ob_get_clean();
-    }
+        }
 
-    private function display_templates() {
-        $templates = $this->get_templates();
+        private function display_templates()
+        {
+            $templates = $this->get_templates();
         
-        foreach ($templates as $template) {
-            ?>
+            foreach ($templates as $template) {
+                ?>
             <div class="template-card" data-language="<?php echo esc_attr($template['language']); ?>">
                 <h3><?php echo esc_html($template['name']); ?></h3>
                 <p class="template-description"><?php echo esc_html($template['description']); ?></p>
@@ -44,31 +50,32 @@ class CodeTemplates {
                     </button>
                 </div>
             </div>
-            <?php
+                <?php
+            }
         }
-    }
 
-    private function get_templates() {
-        $upload_dir = wp_upload_dir();
-        $templates_dir = trailingslashit($upload_dir['basedir']) . 'adversarial-code-generator/templates';
+        private function get_templates()
+        {
+            $upload_dir = wp_upload_dir();
+            $templates_dir = trailingslashit($upload_dir['basedir']) . 'adversarial-code-generator/templates';
         
-        $templates = [];
-        if (file_exists($templates_dir)) {
-            foreach (glob("$templates_dir/*.json") as $file) {
-                $data = json_decode(file_get_contents($file), true);
-                if ($data) {
-                    $templates[] = [
+            $templates = [];
+            if (file_exists($templates_dir)) {
+                foreach (glob("$templates_dir/*.json") as $file) {
+                    $data = json_decode(file_get_contents($file), true);
+                    if ($data) {
+                        $templates[] = [
                         'id' => basename($file, '.json'),
                         'name' => $data['name'],
                         'description' => $data['description'],
                         'code' => $data['code'],
                         'language' => $data['language'],
                         'date_created' => $data['date_created']
-                    ];
+                        ];
+                    }
                 }
             }
-        }
         
-        return $templates;
-    }
-}
+            return $templates;
+        }
+        }

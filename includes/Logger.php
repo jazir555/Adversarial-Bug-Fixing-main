@@ -15,15 +15,15 @@ class Logger {
         return self::$instance;
     }
 
-    public function info($message) {
+    public function log_info($message) {
         $this->log('INFO', $message);
     }
 
-    public function warning($message) {
+    public function log_warning($message) {
         $this->log('WARNING', $message);
     }
 
-    public function error($message) {
+    public function log_error($message) {
         $this->log('ERROR', $message);
     }
 

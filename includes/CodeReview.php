@@ -19,9 +19,23 @@ class CodeReview {
                 <?php wp_nonce_field('adversarial_code_review', 'adversarial_nonce'); ?>
                 <div class="form-group">
                     <label for="code_to_review"><?php esc_html_e('Code to Review:', 'adversarial-code-generator'); ?></label>
-                    <div class="code-editor-wrapper code-to-review" data-language="python" data-theme="monokai" style="height: 200px;"></div>
-                    <input type="hidden" class="code-to-review-value" name="code_to_review_value" value="">
+                    <div class="code-editor-wrapper code-to-review" data-language="python" data-theme="monokai" style="height: 300px;">
+                        <textarea id="code_to_review" name="code_to_review_value" class="code-editor code-to-review-editor" rows="10" style="height: 300px;"></textarea>
+                    </div>
+                    <input type="hidden" id="code_to_review_value" name="code_to_review_value" class="code-editor-value" value="">
                 </div>
+                <script>
+                jQuery(document).ready(function($) {
+                    var codeToReviewEditor = ace.edit($('.code-to-review-editor-wrapper .code-editor')[0]);
+                    codeToReviewEditor.setTheme("ace/theme/monokai");
+                    codeToReviewEditor.session.setMode("ace/mode/python");
+                    
+                    // Update hidden field on form submit - important for form submission to work with Ace editor
+                    $('.code-review-form').on('submit', function(e) {
+                        $('#code_to_review_value').val(codeToReviewEditor.getValue());
+                    });
+                });
+                </script>
                 <div class="form-group">
                     <label for="language"><?php esc_html_e('Programming Language:', 'adversarial-code-generator'); ?></label>
                     <select id="language" name="language" class="regular-text">
@@ -55,5 +69,5 @@ class CodeReview {
         </div>
         <?php
         return ob_get_clean();
-    }
-}
+        }
+        }

@@ -11,7 +11,15 @@ class TranslationSupport {
         $prompt = "Translate the following " . $source_lang . " code to " . $target_lang . ":\n\n" . $code;
         
         $llm_handler = new LLMHandler();
-        return $llm_handler->call_llm_api($llm_handler->select_model('translation'), $prompt, 'translate_code');
+        $response = $llm_handler->call_llm_api($llm_handler->select_model('translation'), $prompt, 'translate_code');
+        if (isset($response['translated_code'])) {
+            return $response;
+        } else {
+            return [
+                'error' => 'Code translation failed',
+                'details' => isset($response['error']) ? $response['error'] : 'Unknown error'
+            ];
+        }
     }
 
     public function save_translation($original_code, $translated_code, $source_lang, $target_lang) {

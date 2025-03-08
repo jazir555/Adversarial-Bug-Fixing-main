@@ -80,6 +80,44 @@ class Sandbox {
         
         return $stdout;
     }
+
+    private function run_in_sandbox($file_path, $language) {
+        throw new Exception("Code execution in sandbox is disabled for security reasons. The current implementation is NOT a secure sandbox environment and should NOT be used to execute untrusted code in production.");
+
+        /* 
+        // Original code execution logic - disabled for security reasons
+        $settings = new Settings();
+        $timeout = $settings->get('code_execution_timeout') ?: 30;
+        
+        $descriptorspec = [
+            0 => ['pipe', 'r'],  // stdin
+            1 => ['pipe', 'w'],  // stdout
+            2 => ['pipe', 'w']   // stderr
+        ];
+        
+        $process = proc_open($this->get_command($file_path, $language), $descriptorspec, $pipes);
+        
+        if (!is_resource($process)) {
+            throw new Exception("Failed to start process");
+        }
+        
+        fclose($pipes[0]);
+        
+        $stdout = stream_get_contents($pipes[1]);
+        fclose($pipes[1]);
+        
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[2]);
+        
+        $return_code = proc_close($process);
+        
+        if ($return_code !== 0 || !empty($stderr)) {
+            throw new Exception("Execution failed: " . $stderr);
+        }
+        
+        return $stdout;
+        */
+    }
     
     private function get_command($file_path, $language) {
         return match ($language) {

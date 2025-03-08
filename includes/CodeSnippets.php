@@ -6,7 +6,12 @@ class CodeSnippets {
         $this->snippets_dir = trailingslashit($upload_dir['basedir']) . 'adversarial-code-generator/snippets';
         wp_mkdir_p($this->snippets_dir);
         
+        add_action('wp_enqueue_scripts', [$this, 'enqueue_scripts']);
         add_shortcode('adversarial_code_snippets', [$this, 'code_snippets_shortcode']);
+    }
+
+    public function enqueue_scripts() {
+        wp_enqueue_script('adversarial-code-snippets', plugin_dir_url(__FILE__) . '../Assets/js/code-snippets.js', ['jquery', 'adversarial-code-editor'], '1.0', true);
     }
 
     public function save_snippet($title, $code, $language, $tags = []) {
@@ -135,5 +140,5 @@ class CodeSnippets {
         </div>
         <?php
         return ob_get_clean();
-    }
-}
+        }
+        }

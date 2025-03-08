@@ -7,16 +7,19 @@ class EmailNotifier {
             return;
         }
         
-        $subject = 'Code Generation Complete';
-        $message = "Your code generation request has been completed.\n\n";
-        $message .= "Iterations: {$result['iterations']}\n";
-        $message .= "Duration: " . number_format($result['duration'], 2) . "s\n";
+        $subject = wp_strip_all_tags('Code Generation Complete');
+        $message = wp_strip_all_tags("Your code generation request has been completed.\n\n");
+        $message .= wp_strip_all_tags("Iterations: " . intval($result['iterations']) . "\n");
+        $message .= wp_strip_all_tags("Duration: " . number_format(floatval($result['duration']), 2) . "s\n");
         
         if (isset($result['features_implemented'])) {
-            $message .= "Features implemented: {$result['features_implemented']}\n";
+            $message .= wp_strip_all_tags("Features implemented: " . sanitize_text_field($result['features_implemented']) . "\n");
         }
         
-        wp_mail($notification_email, $subject, $message);
+        $mail_result = wp_mail(sanitize_email($notification_email), $subject, $message);
+        if (!$mail_result) {
+            error_log('EmailNotifier: wp_mail failed to send completion notification to ' . $notification_email);
+        }
     }
     
     public function send_error_notification($error) {
@@ -27,10 +30,13 @@ class EmailNotifier {
             return;
         }
         
-        $subject = 'Code Generation Error';
-        $message = "An error occurred during code generation:\n\n";
-        $message .= $error->getMessage();
+        $subject = wp_strip_all_tags('Code Generation Error');
+        $message = wp_strip_all_tags("An error occurred during code generation:\n\n");
+        $message .= sanitize_textarea_field($error->getMessage()); // Sanitize error message
         
-        wp_mail($notification_email, $subject, $message);
+        $mail_result = wp_mail(sanitize_email($notification_email), $subject, $message);
+        if (!$mail_result) {
+            error_log('EmailNotifier: wp_mail failed to send error notification to ' . $notification_email);
+        }
     }
 }

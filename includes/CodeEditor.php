@@ -139,212 +139,222 @@ class CodeEditor {
         </div>
         <?php
         return ob_get_clean();
-    }
-
-    public function ajax_save_code_snippet() {
-        check_ajax_referer('adversarial_save_code_nonce', 'nonce');
-
-        $code = isset($_POST['code']) ? wp_kses_post(stripslashes($_POST['code'])) : ''; // Basic sanitization for now
-        $language = isset($_POST['language']) ? sanitize_text_field($_POST['language']) : 'python';
-        $snippet_id = isset($_POST['snippet_id']) ? intval($_POST['snippet_id']) : 0; // Check if snippet_id is sent for updates
-
-        if (empty($code)) {
-            wp_send_json_error(['message' => 'Code cannot be empty.']);
         }
 
-        if ($snippet_id) {
-            // Update existing snippet
-            $updated_snippet_id = $this->update_code_snippet_to_db($snippet_id, $code, $language, get_current_user_id());
-            if ($updated_snippet_id) {
-                wp_send_json_success(['message' => 'Code updated successfully!', 'snippet_id' => $updated_snippet_id]);
-            } else {
-                wp_send_json_error(['message' => 'Failed to update code.']);
+        public function ajax_save_code_snippet()
+        {
+            check_ajax_referer('adversarial_save_code_nonce', 'nonce');
+
+            $code = isset($_POST['code']) ? wp_kses_post(stripslashes($_POST['code'])) : ''; // Basic sanitization for now
+            $language = isset($_POST['language']) ? sanitize_text_field($_POST['language']) : 'python';
+            $snippet_id = isset($_POST['snippet_id']) ? intval($_POST['snippet_id']) : 0; // Check if snippet_id is sent for updates
+
+            if (empty($code)) {
+                wp_send_json_error(['message' => 'Code cannot be empty.']);
             }
-        } else {
-            // Save new snippet
-            $new_snippet_id = $this->save_code_snippet_to_db($code, $language, get_current_user_id());
-            if ($new_snippet_id) {
-                wp_send_json_success(['message' => 'Code saved successfully!', 'snippet_id' => $new_snippet_id]);
+
+            if ($snippet_id) {
+                // Update existing snippet
+                $updated_snippet_id = $this->update_code_snippet_to_db($snippet_id, $code, $language, get_current_user_id());
+                if ($updated_snippet_id) {
+                    wp_send_json_success(['message' => 'Code updated successfully!', 'snippet_id' => $updated_snippet_id]);
+                } else {
+                    wp_send_json_error(['message' => 'Failed to update code.']);
+                }
             } else {
-                wp_send_json_error(['message' => 'Failed to save code.']);
+                // Save new snippet
+                $new_snippet_id = $this->save_code_snippet_to_db($code, $language, get_current_user_id());
+                if ($new_snippet_id) {
+                    wp_send_json_success(['message' => 'Code saved successfully!', 'snippet_id' => $new_snippet_id]);
+                } else {
+                    wp_send_json_error(['message' => 'Failed to save code.']);
+                }
             }
         }
-    }
 
 
-    private function save_code_snippet_to_db($code, $language, $user_id) {
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'adversarial_code_snippets';
+        private function save_code_snippet_to_db($code, $language, $user_id)
+        {
+            global $wpdb;
+            $table_name = $wpdb->prefix . 'adversarial_code_snippets';
 
-        $data = [
+            $data = [
             'code' => $code,
             'language' => $language,
             'user_id' => $user_id,
-        ];
+            ];
 
-        $format = [
+            $format = [
             '%s', // code (longtext)
             '%s', // language (varchar)
             '%d', // user_id (bigint)
-        ];
+            ];
 
-        $result = $wpdb->insert($table_name, $data, $format);
+            $result = $wpdb->insert($table_name, $data, $format);
 
-        if (is_wp_error($result)) {
-            error_log('Database error saving code snippet: ' . $result->get_error_message());
-            return false;
+            if (is_wp_error($result)) {
+                error_log('Database error saving code snippet: ' . $result->get_error_message());
+                return false;
+            }
+
+            return $wpdb->insert_id;
         }
 
-        return $wpdb->insert_id;
-    }
+        private function update_code_snippet_to_db($snippet_id, $code, $language, $user_id)
+        {
+            global $wpdb;
+            $table_name = $wpdb->prefix . 'adversarial_code_snippets';
 
-    private function update_code_snippet_to_db($snippet_id, $code, $language, $user_id) {
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'adversarial_code_snippets';
-
-        $data = [
+            $data = [
             'code' => $code,
             'language' => $language,
-        ];
+            ];
 
-        $format = [
+            $format = [
             '%s', // code (longtext)
             '%s', // language (varchar)
-        ];
+            ];
 
-        $where = [
+            $where = [
             'id' => $snippet_id,
             'user_id' => $user_id,
-        ];
-        $where_format = [
+            ];
+            $where_format = [
             '%d', // id
             '%d', // user_id
-        ];
+            ];
 
-        $result = $wpdb->update($table_name, $data, $where, $format, $where_format);
+            $result = $wpdb->update($table_name, $data, $where, $format, $where_format);
 
-        if (is_wp_error($result)) {
-            error_log('Database error updating code snippet: ' . $result->get_error_message());
-            return false;
+            if (is_wp_error($result)) {
+                error_log('Database error updating code snippet: ' . $result->get_error_message());
+                return false;
+            }
+
+            return $snippet_id; // Return snippet ID on successful update
         }
 
-        return $snippet_id; // Return snippet ID on successful update
-    }
+        public function ajax_load_code_snippet()
+        {
+            check_ajax_referer('adversarial_load_code_nonce', 'nonce');
 
-    public function ajax_load_code_snippet() {
-        check_ajax_referer('adversarial_load_code_nonce', 'nonce');
+            $snippet_id = isset($_POST['snippet_id']) ? intval($_POST['snippet_id']) : 0;
 
-        $snippet_id = isset($_POST['snippet_id']) ? intval($_POST['snippet_id']) : 0;
+            if (!$snippet_id) {
+                wp_send_json_error(['message' => 'Snippet ID is missing.']);
+                return;
+            }
 
-        if (!$snippet_id) {
-            wp_send_json_error(['message' => 'Snippet ID is missing.']);
-            return;
+            $code = $this->load_code_snippet_from_db($snippet_id);
+
+            if ($code !== false) {
+                wp_send_json_success(['code' => $code]);
+            } else {
+                wp_send_json_error(['message' => 'Failed to load code snippet.']);
+            }
         }
 
-        $code = $this->load_code_snippet_from_db($snippet_id);
+        private function load_code_snippet_from_db($snippet_id)
+        {
+            global $wpdb;
+            $table_name = $wpdb->prefix . 'adversarial_code_snippets';
 
-        if ($code !== false) {
-            wp_send_json_success(['code' => $code]);
-        } else {
-            wp_send_json_error(['message' => 'Failed to load code snippet.']);
-        }
-    }
+            $snippet = $wpdb->get_row($wpdb->prepare("SELECT code FROM $table_name WHERE id = %d", $snippet_id));
 
-    private function load_code_snippet_from_db($snippet_id) {
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'adversarial_code_snippets';
-
-        $snippet = $wpdb->get_row($wpdb->prepare("SELECT code FROM $table_name WHERE id = %d", $snippet_id));
-
-        if ($snippet && isset($snippet->code)) {
-            return $snippet->code;
-        } else {
-            return false;
-        }
-    }
-
-    public function ajax_load_code_snippet_list() {
-        check_ajax_referer('adversarial_load_code_list_nonce', 'nonce');
-
-        $snippets = $this->load_code_snippet_list_from_db(get_current_user_id());
-
-        if ($snippets !== false) {
-            wp_send_json_success(['snippets' => $snippets]);
-        } else {
-            wp_send_json_error(['message' => 'Failed to load code snippet list.']);
-        }
-    }
-
-    private function load_code_snippet_list_from_db($user_id) {
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'adversarial_code_snippets';
-
-        $snippets = $wpdb->get_results($wpdb->prepare("SELECT id, language, created_at FROM $table_name WHERE user_id = %d ORDER BY created_at DESC", $user_id));
-
-        if ($snippets) {
-            return $snippets;
-        } else {
-            return false;
-        }
-    }
-
-    public function ajax_delete_code_snippet() {
-        check_ajax_referer('adversarial_delete_code_nonce', 'nonce');
-
-        $snippet_id = isset($_POST['snippet_id']) ? intval($_POST['snippet_id']) : 0;
-
-        if (!$snippet_id) {
-            wp_send_json_error(['message' => 'Snippet ID is missing.']);
-            return;
+            if ($snippet && isset($snippet->code)) {
+                return $snippet->code;
+            } else {
+                return false;
+            }
         }
 
-        $deleted = $this->delete_code_snippet_from_db($snippet_id, get_current_user_id());
+        public function ajax_load_code_snippet_list()
+        {
+            check_ajax_referer('adversarial_load_code_list_nonce', 'nonce');
 
-        if ($deleted) {
-            wp_send_json_success(['message' => 'Code snippet deleted successfully!']);
-        } else {
-            wp_send_json_error(['message' => 'Failed to delete code snippet.']);
-        }
-    }
+            $snippets = $this->load_code_snippet_list_from_db(get_current_user_id());
 
-    private function delete_code_snippet_from_db($snippet_id, $user_id) {
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'adversarial_code_snippets';
-
-        $result = $wpdb->delete(
-            $table_name,
-            ['id' => $snippet_id, 'user_id' => $user_id],
-            ['%d', '%d']
-        );
-
-        return $result !== false;
-    }
-
-    public function ajax_update_code_snippet() {
-        check_ajax_referer('adversarial_update_code_nonce', 'nonce');
-
-        $snippet_id = isset($_POST['snippet_id']) ? intval($_POST['snippet_id']) : 0;
-        $code = isset($_POST['code']) ? wp_kses_post(stripslashes($_POST['code'])) : ''; // Basic sanitization
-        $language = isset($_POST['language']) ? sanitize_text_field($_POST['language']) : 'python';
-
-
-        if (!$snippet_id) {
-            wp_send_json_error(['message' => 'Snippet ID is missing for update.']);
-            return;
+            if ($snippets !== false) {
+                wp_send_json_success(['snippets' => $snippets]);
+            } else {
+                wp_send_json_error(['message' => 'Failed to load code snippet list.']);
+            }
         }
 
-        if (empty($code)) {
-            wp_send_json_error(['message' => 'Code cannot be empty.']);
-            return;
+        private function load_code_snippet_list_from_db($user_id)
+        {
+            global $wpdb;
+            $table_name = $wpdb->prefix . 'adversarial_code_snippets';
+
+            $snippets = $wpdb->get_results($wpdb->prepare("SELECT id, language, created_at FROM $table_name WHERE user_id = %d ORDER BY created_at DESC", $user_id));
+
+            if ($snippets) {
+                return $snippets;
+            } else {
+                return false;
+            }
         }
 
+        public function ajax_delete_code_snippet()
+        {
+            check_ajax_referer('adversarial_delete_code_nonce', 'nonce');
 
-        $updated_snippet_id = $this->update_code_snippet_to_db($snippet_id, $code, $language, get_current_user_id());
+            $snippet_id = isset($_POST['snippet_id']) ? intval($_POST['snippet_id']) : 0;
 
-        if ($updated_snippet_id) {
-            wp_send_json_success(['message' => 'Code snippet updated successfully!', 'snippet_id' => $updated_snippet_id]);
-        } else {
-            wp_send_json_error(['message' => 'Failed to update code snippet.']);
+            if (!$snippet_id) {
+                wp_send_json_error(['message' => 'Snippet ID is missing.']);
+                return;
+            }
+
+            $deleted = $this->delete_code_snippet_from_db($snippet_id, get_current_user_id());
+
+            if ($deleted) {
+                wp_send_json_success(['message' => 'Code snippet deleted successfully!']);
+            } else {
+                wp_send_json_error(['message' => 'Failed to delete code snippet.']);
+            }
         }
-    }
-}
+
+        private function delete_code_snippet_from_db($snippet_id, $user_id)
+        {
+            global $wpdb;
+            $table_name = $wpdb->prefix . 'adversarial_code_snippets';
+
+            $result = $wpdb->delete(
+                $table_name,
+                ['id' => $snippet_id, 'user_id' => $user_id],
+                ['%d', '%d']
+            );
+
+            return $result !== false;
+        }
+
+        public function ajax_update_code_snippet()
+        {
+            check_ajax_referer('adversarial_update_code_nonce', 'nonce');
+
+            $snippet_id = isset($_POST['snippet_id']) ? intval($_POST['snippet_id']) : 0;
+            $code = isset($_POST['code']) ? wp_kses_post(stripslashes($_POST['code'])) : ''; // Basic sanitization
+            $language = isset($_POST['language']) ? sanitize_text_field($_POST['language']) : 'python';
+
+
+            if (!$snippet_id) {
+                wp_send_json_error(['message' => 'Snippet ID is missing for update.']);
+                return;
+            }
+
+            if (empty($code)) {
+                wp_send_json_error(['message' => 'Code cannot be empty.']);
+                return;
+            }
+
+
+            $updated_snippet_id = $this->update_code_snippet_to_db($snippet_id, $code, $language, get_current_user_id());
+
+            if ($updated_snippet_id) {
+                wp_send_json_success(['message' => 'Code snippet updated successfully!', 'snippet_id' => $updated_snippet_id]);
+            } else {
+                wp_send_json_error(['message' => 'Failed to update code snippet.']);
+            }
+        }
+        }
