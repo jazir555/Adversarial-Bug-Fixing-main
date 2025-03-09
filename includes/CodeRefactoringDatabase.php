@@ -1,113 +1,55 @@
 <?php
-class CodeRefactoringDatabase
-{
-    private static $instance;
-    private $wpdb;
+/**
+ * Class CodeRefactoringDatabase
+ *
+ * Handles database interactions for the CodeRefactoring module, providing methods to 
+ * manage refactoring data in the database.
+ */
+class CodeRefactoringDatabase {
+    /**
+     * @var string $table_name The name of the database table for storing code refactoring data.
+     */
     private $table_name;
 
-    private function __construct()
-    {
-        global $wpdb;
-        $this->wpdb = $wpdb;
-        $this->table_name = $wpdb->prefix . 'adversarial_code_refactoring_requests';
+    /**
+     * @var Database Database instance for data operations.
+     */
+    private $db;
+
+    /**
+     * Constructor for the CodeRefactoringDatabase class.
+     *
+     * Initializes the Database instance and sets up the database table name.
+     */
+    public function __construct() {
+        $this->db = Database::get_instance();
+        $this->table_name = $this->db->get_table_name('adversarial_code_refactoring_log');
     }
 
-    public static function get_instance()
-    {
-        if (!self::$instance) {
-            self::$instance = new self();
-        }
-        return self::$instance;
-    }
-
-    public function install()
-    {
-        $charset_collate = $this->wpdb->get_charset_collate();
-        
-        $sql = "CREATE TABLE IF NOT EXISTS $this->table_name (
-            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-            code longtext NOT NULL,
-            language varchar(50) NOT NULL DEFAULT 'python',
-            goal text NOT NULL,
-            refactored_code longtext,
-            status varchar(20) NOT NULL DEFAULT 'pending',
-            error text,
-            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            completed_at datetime,
-            full_error_details longtext,
-            PRIMARY KEY  (id),
-            KEY status (status),
-            KEY created_at (created_at)
+    /**
+     * Installation function for the CodeRefactoringDatabase module.
+     *
+     * Creates the database table to store code refactoring log using Database class.
+     * @global wpdb $wpdb WordPress database abstraction object.
+     */
+    public function install() {
+        $table_name = $this->table_name;
+        $charset_collate = $this->db->wpdb->get_charset_collate();
+        $sql = "CREATE TABLE $table_name (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id BIGINT UNSIGNED NOT NULL,
+            code_snippet_id BIGINT UNSIGNED NULL,
+            refactoring_type VARCHAR(255) NOT NULL,
+            original_code LONGTEXT NULL,
+            refactored_code LONGTEXT NULL,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY user_id (user_id),
+            KEY code_snippet_id (code_snippet_id),
+            KEY refactoring_type (refactoring_type)
         ) $charset_collate;";
-
-        include_once ABSPATH . 'wp-admin/includes/upgrade.php';
-        dbDelta($sql);
+        $this->db->install_table($table_name, $sql);
     }
 
-    public function create_entry($data)
-    {
-        $defaults = [
-            'code' => '',
-            'language' => 'python',
-            'goal' => '',
-            'refactored_code' => null,
-            'status' => 'pending',
-            'error' => null,
-            'created_at' => current_time('mysql'),
-            'completed_at' => null
-        ];
-        
-        $data = wp_parse_args($data, $defaults);
-        
-        $this->wpdb->insert(
-            $this->table_name,
-            [
-                'code' => $data['code'],
-                'language' => $data['language'],
-                'goal' => $data['goal'],
-                'refactored_code' => $data['refactored_code'],
-                'status' => $data['status'],
-                'error' => $data['error'],
-                'created_at' => $data['created_at'],
-                'completed_at' => $data['completed_at']
-            ]
-        );
-        
-        return $this->wpdb->insert_id;
-    }
-
-    public function update_entry($entry_id, $data)
-    {
-        $fields = [
-            'refactored_code', 'status', 'error', 'completed_at', 'full_error_details'
-        ];
-
-        $update_data = array_intersect_key($data, array_flip($fields));
-
-        $this->wpdb->update(
-            $this->table_name,
-            $update_data,
-            ['id' => $entry_id]
-        );
-    }
-
-    public function get_entry($entry_id)
-    {
-        return $this->wpdb->get_row(
-            $this->wpdb->prepare("SELECT * FROM $this->table_name WHERE id = %d", $entry_id)
-        );
-    }
-
-    public function get_entries($status = null, $limit = 20)
-    {
-        $query = "SELECT * FROM $this->table_name";
-        if ($status) {
-            $query .= $this->wpdb->prepare(" WHERE status = %s", $status);
-        }
-        $query .= " ORDER BY created_at DESC LIMIT %d";
-        
-        return $this->wpdb->get_results(
-            $this->wpdb->prepare($query, $limit)
-        );
-    }
+    // Implement database interaction methods for CodeRefactoring module if needed (e.g., logging refactoring operations, storing settings).
 }

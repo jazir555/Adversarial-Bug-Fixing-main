@@ -43,6 +43,15 @@ class AdminUI {
         
         add_submenu_page(
             'adversarial-code-generator',
+            __('Code Comparison', 'adversarial-code-generator'),
+            __('Code Comparison', 'adversarial-code-generator'),
+            'manage_options',
+            'adversarial-code-generator-comparison',
+            [$this, 'render_comparison_page']
+        );
+        
+        add_submenu_page(
+            'adversarial-code-generator',
             __('Git Repositories', 'adversarial-code-generator'),
             __('Git Repositories', 'adversarial-code-generator'),
             'manage_options',
@@ -130,6 +139,43 @@ class AdminUI {
             'adversarial-code-generator-ci',
             [$this, 'render_ci_pipelines_page']
         );
+    }
+
+    public function render_admin_page() {
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.', 'adversarial-code-generator'));
+        }
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e('Adversarial Code Generator', 'adversarial-code-generator'); ?></h1>
+            <?php 
+                $this->render_comparison_page();
+                $this->render_ci_pipelines_page();
+            ?>
+        </div>
+        <?php
+    }
+
+    public function render_comparison_page() {
+        ?>
+        <h2><?php esc_html_e('Code Comparison', 'adversarial-code-generator'); ?></h2>
+        <div class="code-comparison-container">
+            <div class="code-editor-group original-code">
+                <h3><?php esc_html_e('Original Code', 'adversarial-code-generator'); ?></h3>
+                <?php echo CodeEditor::render_editor('original-code-editor'); ?>
+            </div>
+            <div class="code-editor-group modified-code">
+                <h3><?php esc_html_e('Modified Code', 'adversarial-code-generator'); ?></h3>
+                <?php echo CodeEditor::render_editor('modified-code-editor'); ?>
+            </div>
+            <div class="comparison-actions">
+                <button class="button button-primary compare-button"><?php esc_html_e('Compare Codes', 'adversarial-code-generator'); ?></button>
+            </div>
+            <div class="comparison-diff-output">
+                <!-- Diff output will be rendered here -->
+            </div>
+        </div>
+        <?php
     }
 
     public function render_ci_pipelines_page() {
@@ -241,5 +287,174 @@ class AdminUI {
             </div>
         </div>
         <?php
+    }
+
+    public function render_settings_page() {
+        if (!current_user_can('manage_code_generator_settings')) {
+            wp_die(__('You do not have sufficient permissions to access this page.', 'adversarial-code-generator'));
         }
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e('Adversarial Code Generator Settings', 'adversarial-code-generator'); ?></h1>
+            <form method="post" action="options.php">
+                <?php
+                    settings_fields('adversarial_code_generator_settings');
+                    do_settings_sections('adversarial-code-generator-settings');
+                    submit_button('Save Settings');
+                ?>
+            </form>
+        </div>
+        <?php
+    }
+
+    public function render_analytics_page() {
+        if (!current_user_can('view_code_analytics')) {
+            wp_die(__('You do not have sufficient permissions to access this page.', 'adversarial-code-generator'));
         }
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e('Analytics Dashboard', 'adversarial-code-generator'); ?></h1>
+            <div id="analytics-dashboard">
+                <p><?php esc_html_e('This is where analytics data will be displayed.', 'adversarial-code-generator'); ?></p>
+            </div>
+        </div>
+        <?php
+    }
+    
+    public function render_execution_page() {
+        if (!current_user_can('execute_generated_code')) {
+            wp_die(__('You do not have sufficient permissions to access this page.', 'adversarial-code-generator'));
+        }
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e('Execute Code', 'adversarial-code-generator'); ?></h1>
+            <div id="code-execution-area">
+                <p><?php esc_html_e('This is where code execution interface will be.', 'adversarial-code-generator'); ?></p>
+            </div>
+        </div>
+        <?php
+    }
+    
+    public function render_git_management_page() {
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.', 'adversarial-code-generator'));
+        }
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e('Git Repository Management', 'adversarial-code-generator'); ?></h1>
+            <div id="git-management-area">
+                <p><?php esc_html_e('This is where Git repository management interface will be.', 'adversarial-code-generator'); ?></p>
+            </div>
+        </div>
+        <?php
+    }
+    
+    public function render_docs_page() {
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e('Plugin Documentation', 'adversarial-code-generator'); ?></h1>
+            <div id="plugin-documentation">
+                <p><?php esc_html_e('This is where plugin documentation will be displayed.', 'adversarial-code-generator'); ?></p>
+            </div>
+        </div>
+        <?php
+    }
+        
+    public function render_templates_page() {
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.', 'adversarial-code-generator'));
+        }
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e('Code Templates Management', 'adversarial-code-generator'); ?></h1>
+            <div id="templates-management-area">
+                <p><?php esc_html_e('This is where code templates management interface will be.', 'adversarial-code-generator'); ?></p>
+            </div>
+        </div>
+        <?php
+    }
+            
+    public function render_collaboration_page() {
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.', 'adversarial-code-generator'));
+        }
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e('Collaboration Projects', 'adversarial-code-generator'); ?></h1>
+            <div id="collaboration-projects-area">
+                <p><?php esc_html_e('This is where collaboration projects interface will be.', 'adversarial-code-generator'); ?></p>
+            </div>
+        </div>
+        <?php
+    }
+                
+    public function render_history_page() {
+        if (!current_user_can('view_code_history')) {
+            wp_die(__('You do not have sufficient permissions to access this page.', 'adversarial-code-generator'));
+        }
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e('Code History', 'adversarial-code-generator'); ?></h1>
+            <div id="code-history-area">
+                <p><?php esc_html_e('This is where code history will be displayed.', 'adversarial-code-generator'); ?></p>
+            </div>
+        </div>
+        <?php
+    }
+                    
+    public function render_security_page() {
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.', 'adversarial-code-generator'));
+        }
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e('Security Management', 'adversarial-code-generator'); ?></h1>
+            <div id="security-management-area">
+                <p><?php esc_html_e('This is where security management interface will be.', 'adversarial-code-generator'); ?></p>
+            </div>
+        </div>
+        <?php
+    }
+                        
+    public function render_performance_page() {
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.', 'adversarial-code-generator'));
+        }
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e('Performance Optimization', 'adversarial-code-generator'); ?></h1>
+            <div id="performance-optimization-area">
+                <p><?php esc_html_e('This is where performance optimization interface will be.', 'adversarial-code-generator'); ?></p>
+            </div>
+        </div>
+        <?php
+    }
+                            
+    public function render_snippets_page() {
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.', 'adversarial-code-generator'));
+        }
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e('Code Snippets', 'adversarial-code-generator'); ?></h1>
+            <div id="code-snippets-area">
+                <p><?php esc_html_e('This is where code snippets management interface will be.', 'adversarial-code-generator'); ?></p>
+            </div>
+        </div>
+        <?php
+    }
+                                
+    public function render_environments_page() {
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.', 'adversarial-code-generator'));
+        }
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e('Code Environments', 'adversarial-code-generator'); ?></h1>
+            <div id="code-environments-area">
+                <p><?php esc_html_e('This is where code environments management interface will be.', 'adversarial-code-generator'); ?></p>
+            </div>
+        </div>
+        <?php
+    }
+}

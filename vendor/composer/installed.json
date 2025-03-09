@@ -339,7 +339,6 @@
     "dev": true,
     "dev-package-names": [
         "nikic/php-parser",
-        "phpmetrics/phpmetrics",
-        "squizlabs/php_codesniffer"
+        "phpmetrics/phpmetrics"
     ]
 }

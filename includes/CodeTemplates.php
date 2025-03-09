@@ -1,81 +1,223 @@
+<?php
+/**
+ * Class CodeTemplates
+ *
+ * Handles code templates functionalities for the plugin, allowing users to create, 
+ * manage, and reuse code templates within the code editor.
+ */
 class CodeTemplates {
+    /**
+     * @var string $table_name The name of the database table for storing code templates.
+     */
+    private $table_name;
+
+    /**
+     * @var string $version The version of the CodeTemplates class.
+     */
+    private $version = '1.0';
+
+    /**
+     * Constructor for the CodeTemplates class.
+     *
+     * Sets up the database table name and registers activation hook for database table creation.
+     */
     public function __construct() {
-        add_action('wp_enqueue_scripts', [$this, 'enqueue_scripts']);
-        add_shortcode('adversarial_code_template_library', [$this, 'template_library_shortcode']);
+        global $wpdb;
+        $this->table_name = $wpdb->prefix . 'adversarial_code_templates';
+        register_activation_hook(__FILE__, [$this, 'install']);
     }
 
-    public function enqueue_scripts() {
-        wp_enqueue_script('adversarial-code-templates', plugin_dir_url(__FILE__) . '../Assets/js/code-templates.js', ['jquery'], '1.0', true);
+    /**
+     * Installation function for the CodeTemplates module.
+     *
+     * Creates the database table to store code templates.
+     * @global wpdb $wpdb WordPress database abstraction object.
+     */
+    public function install() {
+        global $wpdb;
+        $charset_collate = $wpdb->get_charset_collate();
+        $sql = "CREATE TABLE $this->table_name (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id BIGINT UNSIGNED NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            content LONGTEXT NOT NULL,
+            language VARCHAR(50) NOT NULL DEFAULT 'plaintext',
+            description TEXT NULL,
+            tags TEXT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY user_id (user_id),
+            KEY language (language),
+            FULLTEXT KEY template_content_fulltext (content, description, tags)
+        ) $charset_collate;";
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        dbDelta($sql);
     }
 
-    public function template_library_shortcode($atts) {
-        ob_start(); ?>
-        <div class="adversarial-template-library">
-            <h2><?php esc_html_e('Code Template Library', 'adversarial-code-generator'); ?></h2>
-            <div class="template-search">
-                <input type="text" id="template-search-input" placeholder="<?php esc_attr_e('Search templates...', 'adversarial-code-generator'); ?>">
-                <button id="template-search-button" class="button"><?php esc_html_e('Search', 'adversarial-code-generator'); ?></button>
-            </div>
-            <div class="template-categories">
-                <button data-category="all" class="button category-filter active"><?php esc_html_e('All', 'adversarial-code-generator'); ?></button>
-                <button data-category="python" class="button category-filter"><?php esc_html_e('Python', 'adversarial-code-generator'); ?></button>
-                <button data-category="javascript" class="button category-filter"><?php esc_html_e('JavaScript', 'adversarial-code-generator'); ?></button>
-                <button data-category="java" class="button category-filter"><?php esc_html_e('Java', 'adversarial-code-generator'); ?></button>
-                <button data-category="php" class="button category-filter"><?php esc_html_e('PHP', 'adversarial-code-generator'); ?></button>
-            </div>
-            <div class="templates-grid">
-                <?php $this->display_templates(); ?>
-            </div>
-        </div>
-        <?php
-        return ob_get_clean();
+    /**
+     * Creates a new code template.
+     *
+     * @param array $template_data Array of code template data (name, content, language, description, tags, user_id).
+     * @return int|WP_Error Returns the ID of the newly created code template on success, or WP_Error on failure.
+     */
+    public function create_code_template($template_data) {
+        global $wpdb;
+        $result = $wpdb->insert(
+            $this->table_name,
+            [
+                'user_id' => intval($template_data['user_id']),
+                'name' => sanitize_text_field($template_data['name']),
+                'content' => wp_kses_post($template_data['content']),
+                'language' => sanitize_key($template_data['language']),
+                'description' => sanitize_textarea_field($template_data['description']),
+                'tags' => sanitize_text_field($template_data['tags']),
+            ],
+            [
+                '%d',
+                '%s',
+                '%s',
+                '%s',
+                '%s',
+                '%s'
+            ]
+        );
+
+        if ($result) {
+            return $wpdb->insert_id;
+        } else {
+            return new WP_Error('db_insert_error', 'Failed to create code template.', $wpdb->last_error);
+        }
+    }
+
+    /**
+     * Retrieves a code template by ID.
+     *
+     * @param int $template_id The ID of the code template to retrieve.
+     * @return array|null Returns the code template data array on success, or null if not found.
+     */
+    public function get_code_template($template_id) {
+        global $wpdb;
+        return $wpdb->get_row(
+            $wpdb->prepare("SELECT * FROM $this->table_name WHERE id = %d", $template_id),
+            ARRAY_A
+        );
+    }
+
+    /**
+     * Updates an existing code template.
+     *
+     * @param int $template_id The ID of the code template to update.
+     * @param array $template_data Array of code template data to update (name, content, language, description, tags).
+     * @return bool|WP_Error Returns true on success, or WP_Error on failure.
+     */
+    public function update_code_template($template_id, $template_data) {
+        global $wpdb;
+        $update_data = [];
+        $format = [];
+        if (isset($template_data['name'])) {
+            $update_data['name'] = sanitize_text_field($template_data['name']);
+            $format[] = '%s';
+        }
+        if (isset($template_data['content'])) {
+            $update_data['content'] = wp_kses_post($template_data['content']);
+            $format[] = '%s';
+        }
+        if (isset($template_data['language'])) {
+            $update_data['language'] = sanitize_key($template_data['language']);
+            $format[] = '%s';
+        }
+        if (isset($template_data['description'])) {
+            $update_data['description'] = sanitize_textarea_field($template_data['description']);
+            $format[] = '%s';
+        }
+        if (isset($template_data['tags'])) {
+            $update_data['tags'] = sanitize_text_field($template_data['tags']);
+            $format[] = '%s';
         }
 
-        private function display_templates()
-        {
-            $templates = $this->get_templates();
-        
-            foreach ($templates as $template) {
-                ?>
-            <div class="template-card" data-language="<?php echo esc_attr($template['language']); ?>">
-                <h3><?php echo esc_html($template['name']); ?></h3>
-                <p class="template-description"><?php echo esc_html($template['description']); ?></p>
-                <p class="template-language"><?php printf(__('Language: %s', 'adversarial-code-generator'), esc_html($template['language'])); ?></p>
-                <div class="template-actions">
-                    <button class="button button-primary view-template" data-id="<?php echo esc_attr($template['id']); ?>">
-                        <?php esc_html_e('View', 'adversarial-code-generator'); ?>
-                    </button>
-                    <button class="button use-template" data-id="<?php echo esc_attr($template['id']); ?>">
-                        <?php esc_html_e('Use Template', 'adversarial-code-generator'); ?>
-                    </button>
-                </div>
-            </div>
-                <?php
-            }
+        if (empty($update_data)) {
+            return true; // No data to update
         }
 
-        private function get_templates()
-        {
-            $upload_dir = wp_upload_dir();
-            $templates_dir = trailingslashit($upload_dir['basedir']) . 'adversarial-code-generator/templates';
-        
-            $templates = [];
-            if (file_exists($templates_dir)) {
-                foreach (glob("$templates_dir/*.json") as $file) {
-                    $data = json_decode(file_get_contents($file), true);
-                    if ($data) {
-                        $templates[] = [
-                        'id' => basename($file, '.json'),
-                        'name' => $data['name'],
-                        'description' => $data['description'],
-                        'code' => $data['code'],
-                        'language' => $data['language'],
-                        'date_created' => $data['date_created']
-                        ];
-                    }
-                }
-            }
-        
-            return $templates;
+        $result = $wpdb->update(
+            $this->table_name,
+            $update_data,
+            ['id' => $template_id],
+            $format,
+            ['%d']
+        );
+
+        if ($result !== false) {
+            return true;
+        } else {
+            return new WP_Error('db_update_error', 'Failed to update code template.', $wpdb->last_error);
         }
+    }
+
+    /**
+     * Deletes a code template by ID.
+     *
+     * @param int $template_id The ID of the code template to delete.
+     * @return bool|WP_Error Returns true on success, or WP_Error on failure.
+     */
+    public function delete_code_template($template_id) {
+        global $wpdb;
+        $result = $wpdb->delete(
+            $this->table_name,
+            ['id' => $template_id],
+            ['%d']
+        );
+
+        if ($result !== false) {
+            return true;
+        } else {
+            return new WP_Error('db_delete_error', 'Failed to delete code template.', $wpdb->last_error);
         }
+    }
+
+    /**
+     * Lists code templates, with optional filters and pagination.
+     *
+     * @param array $filters Array of filters (e.g., 'language', 'tags', 'search_term').
+     * @param array $pagination Array for pagination (e.g., 'page', 'per_page').
+     * @return array Returns an array of code template data arrays.
+     */
+    public function list_code_templates($filters = [], $pagination = []) {
+        global $wpdb;
+        $query = "SELECT * FROM $this->table_name WHERE 1=1";
+        $prepare_args = [];
+
+        if (!empty($filters['language'])) {
+            $query .= " AND language = %s";
+            $prepare_args[] = sanitize_key($filters['language']);
+        }
+        if (!empty($filters['tags'])) {
+            $query .= " AND tags LIKE %s";
+            $prepare_args[] = '%' . $wpdb->esc_like(sanitize_text_field($filters['tags'])) . '%';
+        }
+        if (!empty($filters['search_term'])) {
+            $query .= " AND (content LIKE %s OR description LIKE %s OR name LIKE %s OR tags LIKE %s)";
+            $search_pattern = '%' . $wpdb->esc_like(sanitize_text_field($filters['search_term'])) . '%';
+            $prepare_args = array_merge($prepare_args, [$search_pattern, $search_pattern, $search_pattern, $search_pattern]);
+        }
+
+        $query .= " ORDER BY updated_at DESC";
+
+        if (!empty($pagination['per_page']) && intval($pagination['per_page']) > 0) {
+            $per_page = intval($pagination['per_page']);
+            $page = isset($pagination['page']) && intval($pagination['page']) > 0 ? intval($pagination['page']) : 1;
+            $offset = ($page - 1) * $per_page;
+            $query .= " LIMIT %d OFFSET %d";
+            $prepare_args = array_merge($prepare_args, [$per_page, $offset]);
+        }
+
+        return $wpdb->get_results(
+            $wpdb->prepare($query, $prepare_args),
+            ARRAY_A
+        );
+    }
+
+    // Implement functions for code template categories/tags and import/export if needed.
+}
+new CodeTemplates();

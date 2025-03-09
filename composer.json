@@ -1,10 +1,10 @@
 {
     "require": {
         "leafo/lessphp": "^0.5.0",
-        "masterminds/html5": "^2.9"
+        "masterminds/html5": "^2.9",
+        "squizlabs/php_codesniffer": "^3.11"
     },
     "require-dev": {
-        "squizlabs/php_codesniffer": "*",
         "phpmetrics/phpmetrics": "^2.8"
     }
 }

@@ -1,91 +1,154 @@
-class AutoSave {
-    private $autosave_dir;
-    
+<?php
+class Autosave {
+    private $table_name;
+    private $version = '1.0';
+    private $autosave_interval = 60; // seconds
+    /**
+     * @var Database Database instance for data operations.
+     */
+    private $db;
+
     public function __construct() {
-        $upload_dir = wp_upload_dir();
-        $this->autosave_dir = trailingslashit($upload_dir['basedir']) . 'adversarial-code-generator/autosaves';
-        wp_mkdir_p($this->autosave_dir);
-        
-        add_action('adversarial_code_autosave', [$this, 'handle_autosave']);
+        $this->db = Database::get_instance();
+        $this->table_name = $this->db->get_table_name('adversarial_autosaves');
+        register_activation_hook(__FILE__, [$this, 'install']);
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_scripts']);
+        add_action('wp_ajax_adversarial_save_autosave', [$this, 'ajax_save_autosave']);
+        add_action('wp_ajax_nopriv_adversarial_save_autosave', [$this, 'ajax_save_autosave']);
+        add_action('wp_ajax_adversarial_restore_autosave', [$this, 'ajax_restore_autosave']);
+        add_action('wp_ajax_nopriv_adversarial_restore_autosave', [$this, 'ajax_restore_autosave']);
+        add_action('user_register', [$this, 'create_user_autosave']);
+        add_action('wp_logout', [$this, 'cleanup_user_autosaves']);
     }
 
-    public function handle_autosave($data) {
-        $user_id = get_current_user_id();
-        $session_id = uniqid('autosave_');
-        
-        $autosave_data = [
-            'code' => $data['code'],
-            'language' => $data['language'],
-            'prompt' => $data['prompt'],
-            'timestamp' => current_time('mysql')
-        ];
-        
-        file_put_contents("{$this->autosave_dir}/{$user_id}_{$session_id}.json", wp_json_encode($autosave_data));
-        
-        return [
-            'session_id' => $session_id,
-            'message' => 'Autosave successful'
-        ];
+    public function install() {
+        $table_name = $this->table_name;
+        $charset_collate = $this->db->wpdb->get_charset_collate();
+        $sql = "CREATE TABLE $table_name (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id BIGINT UNSIGNED NOT NULL,
+            editor_id VARCHAR(255) NOT NULL,
+            code LONGTEXT NOT NULL,
+            language VARCHAR(50) NOT NULL,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY user_id (user_id),
+            KEY editor_id (editor_id)
+        ) $charset_collate;";
+        $this->db->install_table($table_name, $sql);
     }
 
-    public function get_autosaves($user_id, $limit = 5) {
-        $user_autosaves = glob("{$this->autosave_dir}/{$user_id}_*.json");
-        usort($user_autosaves, function($a, $b) {
-            return filemtime($b) - filemtime($a);
-        });
-        
-        $autosaves = [];
-        foreach (array_slice($user_autosaves, 0, $limit) as $file) {
-            $data = json_decode(file_get_contents($file), true);
-            $autosaves[] = [
-                'id' => basename($file, '.json'),
-                'code' => $data['code'],
-                'language' => $data['language'],
-                'prompt' => $data['prompt'],
-                'timestamp' => $data['timestamp']
-            ];
+    public function enqueue_scripts() {
+        wp_enqueue_script('adversarial-autosave', plugins_url('assets/js/autosave.js', __FILE__), ['jquery'], $this->version, true);
+        wp_localize_script('adversarial-autosave', 'autosaveSettings', [
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce_save' => wp_create_nonce('autosave_nonce')
+        ]);
+    }
+
+    public function ajax_save_autosave() {
+        check_ajax_referer('autosave_nonce', 'nonce');
+        if (!isset($_POST['editor_id']) || !isset($_POST['code']) || !isset($_POST['language'])) {
+            wp_send_json_error(['message' => 'Missing required parameters']);
         }
-        
-        return $autosaves;
+        $editor_id = sanitize_text_field($_POST['editor_id']);
+        $code = wp_kses_post(stripslashes($_POST['code']));
+        $language = sanitize_key($_POST['language']);
+        $this->db->insert(
+            $this->table_name,
+            [
+                'user_id' => get_current_user_id(),
+                'editor_id' => $editor_id,
+                'code' => $code,
+                'language' => $language
+            ],
+            [
+                '%d',
+                '%s',
+                '%s',
+                '%s'
+            ]
+        );
+        wp_send_json_success();
     }
 
-    public function delete_autosave($autosave_id) {
-        $file = "{$this->autosave_dir}/{$autosave_id}.json";
-        if (file_exists($file)) {
-            unlink($file);
-            return true;
+    public function ajax_restore_autosave() {
+        check_ajax_referer('autosave_nonce', 'nonce');
+        $editor_id = sanitize_text_field($_POST['editor_id']);
+        $result = $this->db->get_row(
+            $this->table_name,
+            $this->db->wpdb->prepare(
+                "SELECT code, language FROM $this->table_name 
+                WHERE user_id = %d AND editor_id = %s 
+                ORDER BY timestamp DESC LIMIT 1",
+                get_current_user_id(),
+                $editor_id
+            )
+        );
+        if ($result) {
+            wp_send_json_success([
+                'code' => $result->code,
+                'language' => $result->language
+            ]);
+        } else {
+            wp_send_json_error(['message' => 'No autosave found']);
         }
-        return false;
     }
 
-    public function cleanup_autosaves($days_old = 7) {
-        $cutoff_timestamp = strtotime("-$days_old days");
-        $files_to_delete = glob("{$this->autosave_dir}/*.json");
-
-        foreach ($files_to_delete as $file) {
-            if (filemtime($file) < $cutoff_timestamp) {
-                unlink($file);
-            }
+    public function ajax_delete_autosave() { // Add delete autosave functionality
+        check_ajax_referer('autosave_nonce', 'nonce');
+        if (!isset($_POST['editor_id'])) {
+            wp_send_json_error(['message' => 'Missing required parameters']);
+        }
+        $editor_id = sanitize_text_field($_POST['editor_id']);
+        $result = $this->db->delete(
+            $this->table_name,
+            [
+                'user_id' => get_current_user_id(),
+                'editor_id' => $editor_id,
+            ],
+            [
+                '%d',
+                '%s'
+            ]
+        );
+        if ($result) {
+            wp_send_json_success(['message' => 'Autosave deleted successfully']);
+        } else {
+            wp_send_json_error(['message' => 'Failed to delete autosave']);
         }
     }
 
-    public function schedule_autosave_cleanup() {
-        if (! wp_next_scheduled('daily_autosave_cleanup')) {
-            wp_schedule_event(strtotime('03:00:00 tomorrow'), 'daily', 'daily_autosave_cleanup');
-        }
+
+    public function create_user_autosave($user_id) {
+        $this->db->insert(
+            $this->table_name,
+            [
+                'user_id' => $user_id,
+                'editor_id' => 'default',
+                'code' => '',
+                'language' => 'php'
+            ],
+            [
+                '%d',
+                '%s',
+                '%s',
+                '%s'
+            ]
+        );
     }
 
-    public static function activate() {
-        if (! wp_next_scheduled('daily_autosave_cleanup')) {
-            wp_schedule_event(strtotime('03:00:00 tomorrow'), 'daily', 'daily_autosave_cleanup');
-        }
-    }
-
-    public static function deactivate() {
-        wp_clear_scheduled_hook('daily_autosave_cleanup');
+    public function cleanup_user_autosaves() {
+        $this->db->delete(
+            $this->table_name,
+            [
+                'user_id' => get_current_user_id(),
+            ],
+            [
+                '%d'
+            ],
+            "timestamp < DATE_SUB(NOW(), INTERVAL 1 DAY)"
+        );
     }
 }
-
-add_action('daily_autosave_cleanup', ['AutoSave', 'cleanup_autosaves']);
-register_activation_hook(__FILE__, ['AutoSave', 'activate']);
-register_deactivation_hook(__FILE__, ['AutoSave', 'deactivate']);
+new Autosave();

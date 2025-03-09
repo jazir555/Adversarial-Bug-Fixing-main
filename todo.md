@@ -1,0 +1,1983 @@
+# Adversarial LLM Bug Testing Plugin - TODO
+
+## In Progress
+
+- [x] Implement and complete includes/CodeExport.php
+- [x] Implement and complete includes/CodeExecutionTimeout.php
+- [x] Implement and complete includes/CodeFormatter.php
+- [x] Implement and complete includes/CodeHistory.php
+- [x] Implement and complete includes/CodeImport.php
+- [x] Implement and complete includes/CodePerformance.php
+- [x] Implement and complete includes/CodeQualityAnalyzer.php
+- [x] Implement and complete includes/CodeRefactoring.php
+- [ ] Implement and complete includes/CodeRefactoringDatabase.php
+    - [ ] **Review Current Implementation:**
+        - [x] Analyze the existing code in `includes/CodeRefactoringDatabase.php` to understand its current functionalities and limitations.
+        - [x] Identify areas for improvement and expansion to make it more feature-rich and production-ready.
+
+    - [ ] **Database Table Enhancements:**
+        - [ ] **Add new columns to `adversarial_code_refactoring_log` table:**
+            - [ ] `options` (LONGTEXT) - Store serialized array of options used for refactoring.
+            - [ ] `status` (VARCHAR) - Track the status of the refactoring operation (e.g., success, failure, pending).
+            - [ ] `error_message` (TEXT) - Store error messages in case of refactoring failures.
+            - [ ] `llm_model_used` (VARCHAR) - Record which LLM model was used for refactoring.
+            - [ ] `tokens_consumed` (INT) - Track API tokens consumed during refactoring (for cost analysis).
+        - [ ] **Indexes and Constraints:**
+            - [ ] Add indexes for new columns as needed (e.g., `refactoring_type`, `status`, `timestamp`).
+            - [ ] Consider adding foreign key constraints for `user_id` and `code_snippet_id`.
+        - [ ] **Database Migration:**
+            - [ ] Create database migration script for adding new columns.
+            - [ ] Update `install()` method to include database migrations.
+
+    - [ ] **Data Access and Management Enhancements:**
+        - [ ] **Implement Logging Methods:**
+            - [ ] Implement methods to log refactoring operations with detailed information (refactoring type, options, status, etc.).
+            - [ ] Ensure efficient logging of both successful and failed refactoring attempts.
+        - [ ] **Implement Retrieval Methods:**
+            - [ ] Implement methods to retrieve refactoring logs based on various criteria (e.g., user ID, code snippet ID, refactoring type, date range, status).
+            - [ ] Support pagination and filtering for log retrieval.
+        - [ ] **Data Sanitization and Validation:**
+            - [ ] Ensure proper data sanitization and validation for all database inputs and outputs.
+            - [ ] Prevent SQL injection vulnerabilities.
+
+    - [ ] **Performance Optimization:**
+        - [ ] **Optimize Database Queries:**
+            - [ ] Analyze and optimize SQL queries for logging and retrieving refactoring data.
+            - [ ] Use prepared statements for all database interactions.
+            - [ ] Consider adding caching for frequently accessed data (if applicable).
+        - [ ] **Efficient Data Handling:**
+            - [ ] Ensure efficient handling of large data (e.g., LONGTEXT fields) in database operations.
+
+    - [ ] **Code Documentation and Standards:**
+        - [ ] Add comprehensive inline documentation and PHPDoc comments for all methods and properties.
+        - [ ] Follow WordPress coding standards and best practices.
+
+    - [ ] **Testing:**
+        - [ ] Unit tests for all database interaction methods (create, get, update, delete, list).
+        - [ ] Test data validation and sanitization.
+        - [ ] Test error handling and logging.
+        - [ ] Test under different database configurations and environments.
+
+- [ ] Implement and complete includes/AdvancedSecurity.php
+    - [ ] **Review Current Implementation:**
+        - [x] Analyze the existing code in `includes/AdvancedSecurity.php` to understand its current functionalities and limitations.
+        - [x] Identify areas that need improvement and expansion based on the objective of a comprehensive security plugin.
+
+    - [ ] **Database Enhancements:**
+        - [ ] **Add new columns to `adversarial_advanced_security` table:**
+            - [ ] `scan_start_time` (TIMESTAMP) - Record the start time of a security scan.
+            - [ ] `scan_end_time` (TIMESTAMP) - Record the end time of a security scan.
+            - [ ] `scan_status` (VARCHAR) - Track the status of a scan (e.g., pending, running, completed, failed).
+            - [ ] `scan_initiator` (VARCHAR) - Identify who initiated the scan (e.g., user, system, scheduled).
+            - [ ] `actions_taken` (LONGTEXT) - Store serialized array of actions taken during or after a scan (e.g., fixes applied).
+        - [ ] **Modify `install()` method:**
+            - [ ] Update the `install()` method in `AdvancedSecurity.php` to include the new columns when creating the `adversarial_advanced_security` table.
+
+    - [ ] **Implement Security Scan Functions:**
+        - [ ] **Plugin/Theme Vulnerability Scan (`plugin_theme_vulnerability_scan()`):**
+            - [ ] Implement functionality to scan installed plugins and themes for known vulnerabilities using WordPress APIs or external vulnerability databases.
+            - [ ] Log detailed scan results, including vulnerability descriptions and severity levels.
+        - [ ] **WordPress Core Integrity Check (`wordpress_core_integrity_check()`):**
+            - [ ] Implement checks to verify the integrity of WordPress core files against official WordPress.org checksums.
+            - [ ] Log any discrepancies as potential core file vulnerabilities.
+        - [ ] **User Role Capability Audit (`user_role_capability_audit()`):**
+            - [ ] Develop a function to audit user roles and their assigned capabilities.
+            - [ ] Identify and log roles or capabilities that pose security risks (e.g., overly permissive roles).
+        - [ ] **Malware Scan (`malware_scan()`):**
+            - [ ] Integrate with a malware scanning library or service to scan plugin files and the uploads directory for malware signatures.
+            - [ ] Log any detected malware, including file paths and severity.
+        - [ ] **Code Vulnerability Scan (Static Analysis) (`code_vulnerability_scan()`):**
+            - [ ] Choose and integrate a suitable PHP static analysis tool (e.g., PHPStan, Psalm) for code vulnerability scanning.
+            - [ ] Implement static analysis scans on plugin code to detect common vulnerabilities (SQL injection, XSS, etc.).
+            - [ ] Log code vulnerabilities with file names, line numbers, and vulnerability types.
+        - [ ] **Orchestrate Security Scans (`run_security_scan($scan_types)`):**
+            - [ ] Create a central function to orchestrate the execution of different security scan types based on selected `$scan_types`.
+            - [ ] Update `scan_status` in the database during the scan process.
+            - [ ] Record scan start and end times in the database.
+            - [ ] Aggregate and summarize results from all executed scans.
+
+    - [ ] **Vulnerability Fixes Implementation:**
+        - [ ] **Automatic Fix Application (`apply_fix($vulnerability_id)`):**
+            - [ ] Implement a function to automatically apply fixes for certain types of vulnerabilities based on `$vulnerability_id`.
+            - [ ] Determine appropriate fix actions (e.g., patching, code modification, deactivation) based on vulnerability type.
+            - [ ] Log all fix application attempts and their outcomes (success/failure, details).
+            - [ ] Consider implementing a rollback mechanism for applied fixes.
+        - [ ] **Manual Fix Guidance:**
+            - [ ] Develop a system to provide detailed instructions and guidance for manual vulnerability fixes when automatic fixes are not possible.
+            - [ ] Ensure this guidance is displayed in the admin security logs page for relevant vulnerabilities.
+
+    - [ ] **Security Reports Implementation:**
+        - [ ] **Generate Security Reports (`generate_security_report($log_ids, $format)`):**
+            - [ ] Implement report generation functionality based on specified security log IDs (`$log_ids`) and format (`$format`).
+            - [ ] Include the following in reports:
+                - [ ] Scan summary.
+                - [ ] Detailed vulnerability information (description, severity, location, fix recommendations).
+                - [ ] Actions taken.
+            - [ ] Support multiple report formats:
+                - [ ] HTML
+                - [ ] CSV
+                - [ ] PDF (research and integrate a suitable PDF generation library if necessary).
+            - [ ] Implement functionality to download generated reports.
+        - [ ] **Report Customization Options:**
+            - [ ] Add settings to customize report content (e.g., include/exclude specific sections).
+        - [ ] **Scheduled Report Generation and Email Delivery:**
+            - [ ] Implement options for scheduled report generation (daily, weekly, monthly).
+            - [ ] Integrate with `EmailNotifier` to enable email delivery of scheduled reports.
+            - [ ] Add settings to configure report delivery schedule and email recipients.
+
+    - [ ] **Security Settings Implementation:**
+        - [ ] **Create Admin Settings Page (`display_advanced_security_settings_page()`):**
+            - [ ] Develop a dedicated settings page under the "Advanced Security" admin menu.
+            - [ ] Include sections for:
+                - [ ] **Scan Scheduling:**
+                    - [ ] Enable/disable scheduled security scans.
+                    - [ ] Configure scan frequency (daily, weekly, monthly, custom cron schedules).
+                    - [ ] Select specific scan types to include in scheduled scans.
+                - [ ] **Scan Types Configuration:**
+                    - [ ] Enable/disable individual security scan types (plugin/theme vulnerability scan, core integrity check, etc.).
+                - [ ] **Reporting Options:**
+                    - [ ] Customize security report content.
+                    - [ ] Configure default report format (HTML, CSV, PDF).
+                    - [ ] Enable/disable scheduled report generation and email delivery.
+                    - [ ] Configure email delivery schedule and recipient email addresses.
+            - [ ] Utilize WordPress Settings API for managing and saving settings.
+
+    - [ ] **Code Cleanup and Optimization:**
+        - [ ] Remove duplicate `get_distinct_scan_types()` and `get_distinct_vulnerability_severities()` functions.
+        - [ ] Optimize database queries.
+        - [ ] Ensure proper input sanitization and output escaping throughout the class.
+        - [ ] Implement robust error handling and logging for all critical operations.
+        - [ ] Add comprehensive inline documentation and PHPDoc comments.
+
+    - [ ] **Testing:**
+        - [ ] Unit tests for individual scan functions.
+        - [ ] Integration tests for scan orchestration and fix application.
+        - [ ] End-to-end tests for security reporting and settings.
+        - [ ] Test under different WordPress versions and configurations.
+        - [ ] Test with various plugins and themes installed.
+
+- [ ] **Create** includes/AdversarialCore.php
+    - [ ] **Core Functionality Definition:**
+        - [ ] Define the fundamental functionalities that `AdversarialCore.php` should handle as the core of the plugin.
+            - [ ] Plugin initialization and setup:
+                - [ ] Handle plugin activation and deactivation hooks.
+                - [ ] Set up default plugin options and database configurations.
+                - [ ] Load necessary dependencies and helper functions.
+                - [ ] Consider using wp_get_environment_type() to detect environment.
+            - [ ] Module Loading and Management:
+                - [ ] Implement a system to load and manage other plugin modules (e.g., AdvancedSecurity, Analytics, CodeReview).
+                - [ ] Define a clear structure for modules and how they are registered with the core.
+            - [ ] Core Data Structures and Constants:
+                - [ ] Define essential data structures and constants used throughout the plugin.
+                - [ ] Ensure these are well-organized and easily accessible to other modules.
+            - [ ] Central Plugin Logic and Workflows:
+                - [ ] Implement core plugin logic and workflows that span across multiple modules.
+                - [ ] This could include the main process for initiating bug testing, security scans, etc.
+            - [ ] Plugin Activation and Deactivation Processes:
+                - [ ] Implement detailed processes for plugin activation, including database table creation, options setup, and any initial configurations.
+                - [ ] Implement deactivation processes, such as cleanup tasks and temporary data handling.
+
+    - [ ] **Modular Architecture Design:**
+        - [ ] Design a robust modular architecture where `AdversarialCore.php` serves as the central orchestrator.
+        - [ ] Plan how different modules will interact with the core and with each other.
+        - [ ] Define clear APIs or interfaces for module communication and data sharing.
+        - [ ] Consider using action hooks and filters for extensibility and plugin customization.
+
+    - [ ] **Centralized Settings Management:**
+        - [ ] Implement a comprehensive settings management system within `AdversarialCore.php`.
+        - [ ] Utilize the WordPress Settings API to create admin settings pages and sections.
+        - [ ] Define plugin-wide settings and ensure they are accessible to all modules.
+        - [ ] Implement validation and sanitization for all settings inputs.
+
+    - [ ] **Error Handling and Logging Framework:**
+        - [ ] Develop a centralized error handling and logging framework.
+        - [ ] Implement functions for logging errors, warnings, and debug information.
+        - [ ] Integrate with `Logger.php` for advanced logging capabilities if available.
+        - [ ] Define error display and reporting mechanisms for different environments (development vs. production).
+
+    - [ ] **Plugin Lifecycle Management:**
+        - [ ] Implement methods for managing the entire plugin lifecycle:
+            - [ ] Activation: Run database migrations, set up default options, register admin menus, etc.
+            - [ ] Deactivation: Perform cleanup tasks, deactivate scheduled jobs, etc.
+            - [ ] Uninstall: Remove all plugin data, including database tables and options, upon plugin deletion.
+
+    - [ ] **Security and Performance Considerations:**
+        - [ ] Prioritize security in the design of `AdversarialCore.php` as it's the plugin's foundation.
+        - [ ] Implement nonce verification for all admin actions.
+        - [ ] Sanitize and validate all user inputs and data handling within the core.
+        - [ ] Optimize code for performance, especially for frequently executed core functions.
+        - [ ] Consider using caching and transient APIs to improve performance.
+
+    - [ ] **Code Documentation and Standards:**
+        - [ ] Write detailed inline documentation and PHPDoc comments for all code in `AdversarialCore.php`.
+        - [ ] Follow WordPress coding standards strictly for consistency and maintainability.
+        - [ ] Ensure the code is well-structured, readable, and easy to understand for future development and maintenance.
+
+    - [ ] **Testing Strategy for Core Functionality:**
+        - [ ] Develop a comprehensive testing strategy for `AdversarialCore.php`.
+        - [ ] Write unit tests to cover all core functions and components.
+        - [ ] Implement integration tests to verify interactions between the core and other modules.
+        - [ ] Plan for testing plugin activation, deactivation, settings API, and error handling mechanisms.
+
+- [ ] Implement and complete includes/CodeReview.php
+    - [ ] **Feature Planning:**
+        - [ ] **Code Review Requests:**
+            - [ ] Allow users to submit code review requests for specific files or code snippets.
+            - [ ] Implement a system for assigning reviewers (automatically or manually).
+            - [ ] Notify reviewers of new review requests.
+        - [ ] **Code Review Interface:**
+            - [ ] Develop an admin interface for code reviews.
+            - [ ] Display code diffs clearly within the review interface.
+            - [ ] Enable reviewers to add comments and feedback directly on code lines.
+            - [ ] Support different types of feedback (e.g., suggestions, questions, issues).
+        - [ ] **Reviewer Assignment and Notifications:**
+            - [ ] Implement flexible reviewer assignment rules (e.g., based on file type, code section, user expertise).
+            - [ ] Configure email notifications for review requests, updates, and deadlines.
+        - [ ] **Review Workflow Management:**
+            - [ ] Define different review statuses (e.g., pending, in review, changes requested, approved, rejected).
+            - [ ] Implement workflow transitions and actions based on review statuses.
+            - [ ] Track review history and revisions.
+        - [ ] **Integration with LLM for Code Review Assistance:**
+            - [ ] Integrate with the LLMHandler to provide AI-powered code review suggestions.
+            - [ ] Allow users to request LLM-based automated code analysis and feedback during reviews.
+            - [ ] Make LLM assistance configurable (e.g., enable/disable, adjust feedback level).
+        - [ ] **Review Metrics and Reporting:**
+            - [ ] Track key code review metrics (e.g., review time, number of comments, issues found, resolution rate).
+            - [ ] Generate reports on code review activity and performance.
+        - [ ] **Settings and Configuration:**
+            - [ ] Create a settings page for CodeReview module to configure:
+                - [ ] Reviewer assignment rules.
+                - [ ] Notification settings.
+                - [ ] LLM assistance options.
+                - [ ] Workflow settings.
+
+    - [ ] **Database Design:**
+        - [ ] **Tables:**
+            - [ ] `adversarial_code_review_requests`:
+                - [ ] `request_id` (INT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `code_snippet_id` (INT, FOREIGN KEY to code snippets table)
+                - [ ] `requester_user_id` (INT, FOREIGN KEY to users table)
+                - [ ] `requested_at` (TIMESTAMP)
+                - [ ] `status` (VARCHAR)
+            - [ ] `adversarial_code_review_reviewers`:
+                - [ ] `review_assignment_id` (INT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `request_id` (INT, FOREIGN KEY to `adversarial_code_review_requests`)
+                - [ ] `reviewer_user_id` (INT, FOREIGN KEY to users table)
+                - [ ] `assigned_at` (TIMESTAMP)
+            - [ ] `adversarial_code_review_comments`:
+                - [ ] `comment_id` (INT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `review_assignment_id` (INT, FOREIGN KEY to `adversarial_code_review_reviewers`)
+                - [ ] `user_id` (INT, FOREIGN KEY to users table)
+                - [ ] `comment_text` (TEXT)
+                - [ ] `commented_at` (TIMESTAMP)
+                - [ ] `code_line` (INT)
+        - [ ] **Indexes:**
+            - [ ] Add indexes to all foreign key columns and columns used for filtering and sorting.
+
+    - [ ] **Class Implementation:**
+        - [ ] Create `CodeReview.php` class with methods for:
+            - [ ] Submitting code review requests.
+            - [ ] Assigning reviewers.
+            - [ ] Displaying code review interface.
+            - [ ] Adding comments and feedback.
+            - [ ] Managing review workflow statuses.
+            - [ ] Generating review reports.
+            - [ ] Integrating with LLM for code review assistance.
+            - [ ] Handling settings and configurations.
+
+    - [ ] **UI/UX Design:**
+        - [ ] Design user-friendly admin interfaces for:
+            - [ ] Submitting code review requests.
+            - [ ] Reviewing code and adding feedback.
+            - [ ] Managing review requests and assignments.
+            - [ ] Viewing review reports and metrics.
+            - [ ] Configuring CodeReview settings.
+
+    - [ ] **Testing:**
+        - [ ] Unit tests for all backend functionalities.
+        - [ ] Integration tests for workflow and LLM integration.
+        - [ ] User acceptance testing for UI/UX and usability.
+
+- [ ] Implement and complete includes/CodeSharing.php
+    - [ ] **Feature Planning:**
+        - [ ] **Code Sharing Functionality:**
+            - [ ] Allow users to share code snippets with:
+                - [ ] Public access (anyone with the link).
+                - [ ] Private access (only specific users).
+                - [ ] Password protection.
+            - [ ] Generate unique, shareable URLs for code snippets.
+            - [ ] Set expiration dates for shared code links.
+        - [ ] **Sharing Options:**
+            - [ ] Choose sharing method: URL, embed code, direct link.
+            - [ ] Select code format/syntax highlighting for sharing.
+            - [ ] Add descriptions or notes to shared code snippets.
+        - [ ] **Access Control and Security:**
+            - [ ] Implement access control mechanisms for private and password-protected sharing.
+            - [ ] Securely store passwords for protected shares.
+            - [ ] Handle user authentication and authorization for private shares.
+        - [ ] **Embed Functionality:**
+            - [ ] Generate embed code for shared snippets to be embedded on websites or other platforms.
+            - [ ] Customize embed code appearance (theme, styling).
+        - [ ] **Analytics and Tracking:**
+            - [ ] Track views and access of shared code snippets.
+            - [ ] Provide analytics dashboards for users to monitor their shared code.
+        - [ ] **Integration with Other Modules:**
+            - [ ] Integrate with CodeSnippets module to easily share existing snippets.
+            - [ ] Potentially integrate with Collaboration module for sharing code within collaborative sessions.
+        - [ ] **Settings and Configuration:**
+            - [ ] Create a settings page for CodeSharing module to configure:
+                - [ ] Default sharing settings (public/private, expiration).
+                - [ ] Embed code customization options.
+                - [ ] Analytics tracking preferences.
+
+    - [ ] **Database Design:**
+        - [ ] **Tables:**
+            - [ ] `adversarial_code_shares`:
+                - [ ] `share_id` (INT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `code_snippet_id` (INT, FOREIGN KEY to code snippets table)
+                - [ ] `sharing_user_id` (INT, FOREIGN KEY to users table)
+                - [ ] `share_url_hash` (VARCHAR, UNIQUE INDEX)
+                - [ ] `access_type` (ENUM 'public', 'private', 'password')
+                - [ ] `password_hash` (VARCHAR, for password-protected shares)
+                - [ ] `expiration_date` (TIMESTAMP, nullable)
+                - [ ] `created_at` (TIMESTAMP)
+            - [ ] `adversarial_code_share_access_logs`:
+                - [ ] `access_log_id` (INT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `share_id` (INT, FOREIGN KEY to `adversarial_code_shares`)
+                - [ ] `access_timestamp` (TIMESTAMP)
+                - [ ] `viewer_ip_address` (VARCHAR)
+                - [ ] `viewer_user_id` (INT, FOREIGN KEY to users table, nullable)
+        - [ ] **Indexes:**
+            - [ ] Add indexes to foreign key columns, `share_url_hash`, and `expiration_date`.
+
+    - [ ] **Class Implementation:**
+        - [ ] Create `CodeSharing.php` class with methods for:
+            - [ ] Generating shareable URLs for code snippets.
+            - [ ] Handling different sharing access types (public, private, password).
+            - [ ] Implementing embed code generation.
+            - [ ] Managing share expiration.
+            - [ ] Tracking share access and analytics.
+            - [ ] Integrating with other modules.
+            - [ ] Handling settings and configurations.
+
+    - [ ] **UI/UX Design:**
+        - [ ] Design user-friendly interfaces for:
+            - [ ] Sharing code snippets with different options.
+            - [ ] Managing and viewing shared code snippets.
+            - [ ] Accessing shared code snippets via URLs.
+            - [ ] Viewing analytics for shared code.
+            - [ ] Configuring CodeSharing settings.
+
+    - [ ] **Security:**
+        - [ ] Secure password hashing for password-protected shares.
+        - [ ] Implement proper access control checks for private shares.
+        - [ ] Prevent unauthorized access to shared code snippets.
+
+    - [ ] **Testing:**
+        - [ ] Unit tests for URL generation, access control, embed code functionality.
+        - [ ] Integration tests for sharing workflow and analytics tracking.
+        - [ ] Security testing for access control and password protection.
+        - [ ] User acceptance testing for UI/UX and usability.
+
+- [ ] Implement and complete includes/CodeSnippets.php
+    - [ ] **Feature Planning:**
+        - [ ] **Code Snippet Management:**
+            - [ ] Allow users to create, edit, and delete code snippets.
+            - [ ] Organize snippets into categories or tags.
+            - [ ] Implement search and filtering for snippets.
+        - [ ] **Snippet Types and Syntax Highlighting:**
+            - [ ] Support different snippet types (code, text, configuration, etc.).
+            - [ ] Integrate syntax highlighting for various programming languages.
+            - [ ] Allow users to select language for syntax highlighting.
+        - [ ] **Snippet Embedding and Insertion:**
+            - [ ] Allow users to easily embed snippets into code editor or other areas.
+            - [ ] Implement shortcodes or Gutenberg blocks for snippet insertion in WordPress content.
+        - [ ] **Snippet Versioning and History:**
+            - [ ] Track versions of code snippets.
+            - [ ] Allow users to revert to previous versions.
+            - [ ] View snippet history and changes.
+        - [ ] **Snippet Import and Export:**
+            - [ ] Implement import functionality from various formats (e.g., text files, JSON, other snippet managers).
+            - [ ] Implement export functionality in different formats.
+        - [ ] **Integration with Other Modules:**
+            - [ ] Integrate with CodeEditor for seamless snippet insertion.
+            - [ ] Integrate with CodeSharing for easy snippet sharing.
+            - [ ] Integrate with CodeTemplates for using snippets in templates.
+        - [ ] **Settings and Configuration:**
+            - [ ] Create a settings page for CodeSnippets module to configure:
+                - [ ] Default snippet settings.
+                - [ ] Syntax highlighting themes.
+                - [ ] Import/export options.
+
+    - [ ] **Database Design:**
+        - [ ] **Tables:**
+            - [ ] `adversarial_code_snippets`:
+                - [ ] `snippet_id` (INT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `user_id` (INT, FOREIGN KEY to users table)
+                - [ ] `title` (VARCHAR)
+                - [ ] `content` (LONGTEXT)
+                - [ ] `language` (VARCHAR, for syntax highlighting)
+                - [ ] `category_id` (INT, FOREIGN KEY to categories table, nullable)
+                - [ ] `created_at` (TIMESTAMP)
+                - [ ] `updated_at` (TIMESTAMP)
+            - [ ] `adversarial_code_snippet_categories`:
+                - [ ] `category_id` (INT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `category_name` (VARCHAR)
+            - [ ] `adversarial_code_snippet_versions`:
+                - [ ] `version_id` (INT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `snippet_id` (INT, FOREIGN KEY to `adversarial_code_snippets`)
+                - [ ] `version_number` (INT)
+                - [ ] `content` (LONGTEXT)
+                - [ ] `versioned_at` (TIMESTAMP)
+        - [ ] **Indexes:**
+            - [ ] Add indexes to foreign key columns, `title`, `category_id`.
+
+    - [ ] **Class Implementation:**
+        - [ ] Create `CodeSnippets.php` class with methods for:
+            - [ ] Creating, editing, deleting code snippets.
+            - [ ] Managing snippet categories.
+            - [ ] Implementing snippet search and filtering.
+            - [ ] Handling snippet versioning and history.
+            - [ ] Implementing snippet import/export.
+            - [ ] Integrating with other modules.
+            - [ ] Handling settings and configurations.
+
+    - [ ] **UI/UX Design:**
+        - [ ] Design user-friendly admin interfaces for:
+            - [ ] Managing code snippets (list, create, edit, delete).
+            - [ ] Organizing snippets into categories.
+            - [ ] Searching and filtering snippets.
+            - [ ] Viewing snippet history and versions.
+            - [ ] Importing and exporting snippets.
+            - [ ] Configuring CodeSnippets settings.
+        - [ ] Implement UI elements for snippet insertion in code editor and WordPress content.
+
+    - [ ] **Testing:**
+        - [ ] Unit tests for snippet management, versioning, import/export functionalities.
+        - [ ] Integration tests for snippet insertion and module integrations.
+        - [ ] User acceptance testing for UI/UX and usability.
+
+- [ ] Implement and complete includes/CodeTemplates.php
+    - [ ] **Feature Planning:**
+        - [ ] **Code Template Management:**
+            - [ ] Allow users to create, edit, and delete code templates.
+            - [ ] Organize templates into categories or tags.
+            - [ ] Implement search and filtering for templates.
+        - [ ] **Template Types and Placeholders:**
+            - [ ] Support different template types (code structures, boilerplate, etc.).
+            - [ ] Implement placeholders within templates for dynamic content insertion.
+            - [ ] Define placeholder syntax and types (text, code, variables).
+        - [ ] **Template Application and Generation:**
+            - [ ] Allow users to apply templates to generate code in the code editor.
+            - [ ] Implement template preview before application.
+            - [ ] Handle placeholder replacement during template application.
+        - [ ] **Template Versioning and History:**
+            - [ ] Track versions of code templates.
+            - [ ] Allow users to revert to previous versions.
+            - [ ] View template history and changes.
+        - [ ] **Template Import and Export:**
+            - [ ] Implement import functionality from various formats.
+            - [ ] Implement export functionality in different formats.
+        - [ ] **Integration with Other Modules:**
+            - [ ] Integrate with CodeEditor for seamless template application.
+            - [ ] Integrate with CodeSnippets for using snippets within templates.
+        - [ ] **Settings and Configuration:**
+            - [ ] Create a settings page for CodeTemplates module to configure:
+                - [ ] Default template settings.
+                - [ ] Placeholder syntax customization.
+                - [ ] Import/export options.
+
+    - [ ] **Database Design:**
+        - [ ] **Tables:**
+            - [ ] `adversarial_code_templates`:
+                - [ ] `template_id` (INT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `user_id` (INT, FOREIGN KEY to users table)
+                - [ ] `title` (VARCHAR)
+                - [ ] `content` (LONGTEXT)
+                - [ ] `category_id` (INT, FOREIGN KEY to categories table, nullable)
+                - [ ] `created_at` (TIMESTAMP)
+                - [ ] `updated_at` (TIMESTAMP)
+            - [ ] `adversarial_code_template_categories`:
+                - [ ] `category_id` (INT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `category_name` (VARCHAR)
+            - [ ] `adversarial_code_template_versions`:
+                - [ ] `version_id` (INT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `template_id` (INT, FOREIGN KEY to `adversarial_code_templates`)
+                - [ ] `version_number` (INT)
+                - [ ] `content` (LONGTEXT)
+                - [ ] `versioned_at` (TIMESTAMP)
+        - [ ] **Indexes:**
+            - [ ] Add indexes to foreign key columns, `title`, `category_id`.
+
+    - [ ] **Class Implementation:**
+        - [ ] Create `CodeTemplates.php` class with methods for:
+            - [ ] Creating, editing, deleting code templates.
+            - [ ] Managing template categories.
+            - [ ] Implementing template search and filtering.
+            - [ ] Handling template versioning and history.
+            - [ ] Implementing template import/export.
+            - [ ] Implementing template application and placeholder replacement.
+            - [ ] Integrating with other modules.
+            - [ ] Handling settings and configurations.
+
+    - [ ] **UI/UX Design:**
+        - [ ] Design user-friendly admin interfaces for:
+            - [ ] Managing code templates (list, create, edit, delete).
+            - [ ] Organizing templates into categories.
+            - [ ] Searching and filtering templates.
+            - [ ] Viewing template history and versions.
+            - [ ] Importing and exporting templates.
+            - [ ] Applying templates in code editor.
+            - [ ] Configuring CodeTemplates settings.
+
+    - [ ] **Testing:**
+        - [ ] Unit tests for template management, versioning, import/export, application functionalities.
+        - [ ] Integration tests for template application in code editor and module integrations.
+        - [ ] User acceptance testing for UI/UX and usability.
+
+- [ ] Implement and complete includes/Collaboration.php
+    - [ ] **Feature Planning:**
+        - [ ] **Real-time Collaborative Code Editing:**
+            - [ ] Implement real-time code editing functionality using WebSockets or similar technology.
+            - [ ] Allow multiple users to edit the same code document simultaneously.
+            - [ ] Display cursors and selections of all collaborators in real-time.
+        - [ ] **User Presence and Status:**
+            - [ ] Show online/offline status of collaborators.
+            - [ ] Display user avatars or names in the collaboration interface.
+        - [ ] **Chat and Communication:**
+            - [ ] Integrate a real-time chat feature for collaborators to communicate within the code editor.
+            - [ ] Support private and group chat channels.
+            - [ ] Implement notifications for new chat messages.
+        - [ ] **Access Control and Permissions:**
+            - [ ] Define different roles and permissions for collaborators (e.g., admin, editor, viewer).
+            - [ ] Implement access control mechanisms to manage who can join and edit collaborative sessions.
+        - [ ] **Session Management:**
+            - [ ] Allow users to create and manage collaboration sessions.
+            - [ ] Implement session invitation and joining mechanisms.
+            - [ ] Track active collaboration sessions.
+        - [ ] **Code Synchronization and Conflict Resolution:**
+            - [ ] Ensure efficient and reliable code synchronization across collaborators.
+            - [ ] Implement conflict resolution mechanisms to handle concurrent edits.
+            - [ ] Consider operational transformation (OT) or conflict-free replicated data types (CRDTs) for advanced conflict resolution.
+        - [ ] **Session History and Replay:**
+            - [ ] Record collaboration sessions and code changes.
+            - [ ] Allow session replay to review past collaborative editing sessions.
+        - [ ] **Integration with Other Modules:**
+            - [ ] Integrate with CodeEditor as the primary collaborative editing interface.
+            - [ ] Potentially integrate with UserCapabilities for managing collaborator permissions.
+        - [ ] **Settings and Configuration:**
+            - [ ] Create a settings page for Collaboration module to configure:
+                - [ ] Real-time collaboration server settings (if using external server).
+                - [ ] Session management options.
+                - [ ] Access control and permission settings.
+                - [ ] Chat and notification settings.
+
+    - [ ] **Technology Stack:**
+        - [ ] **Real-time Communication:**
+            - [ ] Choose a real-time communication technology (e.g., WebSockets, Pusher, Firebase Realtime Database).
+            - [ ] Set up a real-time server if necessary (e.g., Node.js with Socket.IO for WebSockets).
+        - [ ] **Code Synchronization and Conflict Resolution:**
+            - [ ] Research and choose a suitable algorithm or library for code synchronization and conflict resolution (e.g., OT, CRDT).
+
+    - [ ] **Database Design:**
+        - [ ] **Tables:**
+            - [ ] `adversarial_collaboration_sessions`:
+                - [ ] `session_id` (INT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `session_name` (VARCHAR)
+                - [ ] `creator_user_id` (INT, FOREIGN KEY to users table)
+                - [ ] `created_at` (TIMESTAMP)
+                - [ ] `status` (ENUM 'active', 'closed')
+            - [ ] `adversarial_collaboration_session_users`:
+                - [ ] `session_user_id` (INT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `session_id` (INT, FOREIGN KEY to `adversarial_collaboration_sessions`)
+                - [ ] `user_id` (INT, FOREIGN KEY to users table)
+                - [ ] `role` (VARCHAR, e.g., 'admin', 'editor', 'viewer')
+                - [ ] `joined_at` (TIMESTAMP)
+            - [ ] `adversarial_collaboration_session_history`:
+                - [ ] `history_id` (BIGINT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `session_id` (INT, FOREIGN KEY to `adversarial_collaboration_sessions`)
+                - [ ] `user_id` (INT, FOREIGN KEY to users table)
+                - [ ] `change_type` (VARCHAR, e.g., 'insert', 'delete', 'update')
+                - [ ] `change_data` (TEXT)
+                - [ ] `timestamp` (TIMESTAMP)
+        - [ ] **Indexes:**
+            - [ ] Add indexes to foreign key columns, `session_status`.
+
+    - [ ] **Class Implementation:**
+        - [ ] Create `Collaboration.php` class with methods for:
+            - [ ] Creating and managing collaboration sessions.
+            - [ ] Handling real-time code editing and synchronization.
+            - [ ] Implementing user presence and status.
+            - [ ] Managing chat and communication features.
+            - [ ] Implementing access control and permissions.
+            - [ ] Recording and replaying session history.
+            - [ ] Integrating with other modules.
+            - [ ] Handling settings and configurations.
+
+    - [ ] **UI/UX Design:**
+        - [ ] Design user-friendly interfaces for:
+            - [ ] Initiating and joining collaboration sessions.
+            - [ ] Real-time code editing with multiple collaborators.
+            - [ ] User presence and status indicators.
+            - [ ] Real-time chat interface.
+            - [ ] Managing collaboration sessions and users.
+            - [ ] Configuring Collaboration settings.
+
+    - [ ] **Testing:**
+        - [ ] Unit tests for session management, access control, chat functionality.
+        - [ ] Integration tests for real-time code synchronization and conflict resolution.
+        - [ ] Performance and scalability testing for real-time collaboration features.
+        - [ ] User acceptance testing for UI/UX and usability of collaborative editing.
+
+- [ ] Implement and complete includes/Database.php
+    - [ ] **Feature Planning:**
+        - [ ] **Database Abstraction Layer:**
+            - [ ] Create a database abstraction layer to handle database interactions.
+            - [ ] Support multiple database systems (e.g., MySQL, MariaDB) if necessary.
+            - [ ] Provide a consistent API for database operations across the plugin.
+        - [ ] **Database Schema Management:**
+            - [ ] Implement functions for creating, updating, and dropping database tables.
+            - [ ] Manage database schema changes and migrations.
+            - [ ] Provide tools for database schema inspection and documentation.
+        - [ ] **Data Sanitization and Security:**
+            - [ ] Implement data sanitization and validation for all database inputs.
+            - [ ] Prevent SQL injection vulnerabilities.
+            - [ ] Securely handle database credentials and connections.
+        - [ ] **Query Building and Execution:**
+            - [ ] Develop a query builder interface for constructing database queries programmatically.
+            - [ ] Implement functions for executing queries and fetching results.
+            - [ ] Support prepared statements for secure and efficient query execution.
+        - [ ] **Data Access and Manipulation:**
+            - [ ] Provide methods for common data access operations (CRUD - Create, Read, Update, Delete).
+            - [ ] Implement data pagination and filtering for large datasets.
+            - [ ] Support data serialization and deserialization.
+        - [ ] **Database Utilities and Helpers:**
+            - [ ] Implement utility functions for database tasks (e.g., table prefixing, error logging, debugging).
+            - [ ] Provide helper functions for common database operations.
+        - [ ] **Performance Optimization:**
+            - [ ] Optimize database queries and operations for performance.
+            - [ ] Implement caching mechanisms for frequently accessed data.
+            - [ ] Monitor database performance and identify bottlenecks.
+        - [ ] **Settings and Configuration:**
+            - [ ] Create a settings page for Database module to configure:
+                - [ ] Database connection settings (if needed beyond WordPress defaults).
+                - [ ] Caching options.
+                - [ ] Debugging and logging settings.
+
+    - [ ] **Class Implementation:**
+        - [ ] Create `Database.php` class with methods for:
+            - [ ] Database connection management.
+            - [ ] Schema management and migrations.
+            - [ ] Data sanitization and security.
+            - [ ] Query building and execution.
+            - [ ] CRUD operations and data access.
+            - [ ] Database utilities and helpers.
+            - [ ] Performance optimization techniques.
+            - [ ] Handling settings and configurations.
+
+    - [ ] **Abstraction Layer Design:**
+        - [ ] Design a robust database abstraction layer that encapsulates database interactions.
+        - [ ] Define interfaces or abstract classes for database operations.
+        - [ ] Implement specific database drivers (e.g., for MySQL) if needed for multi-database support.
+
+    - [ ] **Security:**
+        - [ ] Implement comprehensive data sanitization and validation to prevent SQL injection.
+        - [ ] Securely manage database credentials and connection parameters.
+        - [ ] Follow secure coding practices for all database interactions.
+
+    - [ ] **Testing:**
+        - [ ] Unit tests for database connection, query execution, data sanitization.
+        - [ ] Integration tests for schema management and data access operations.
+        - [ ] Performance tests for database query optimization and caching.
+        - [ ] Security testing for SQL injection vulnerabilities.
+
+- [ ] Implement and complete includes/EmailNotifier.php
+    - [ ] **Feature Planning:**
+        - [ ] **Email Notification System:**
+            - [ ] Implement a system for sending email notifications for various plugin events.
+            - [ ] Support different email types (e.g., plain text, HTML).
+            - [ ] Allow customization of email templates and content.
+        - [ ] **Event-Based Notifications:**
+            - [ ] Define plugin events that trigger email notifications (e.g., code review requests, security alerts, activity logs).
+            - [ ] Configure which events should trigger notifications and to whom.
+        - [ ] **Recipient Management:**
+            - [ ] Manage email recipients for different notification types.
+            - [ ] Support user-based and role-based recipient lists.
+            - [ ] Allow users to customize their email notification preferences.
+        - [ ] **Email Queue and Delivery:**
+            - [ ] Implement an email queue to handle email sending in the background.
+            - [ ] Ensure reliable email delivery and error handling.
+            - [ ] Consider using WP-Cron or Action Scheduler for email queue processing.
+        - [ ] **Email Logging and Tracking:**
+            - [ ] Log all sent emails, including recipients, subject, and status.
+            - [ ] Track email delivery status (sent, failed, opened, clicked).
+            - [ ] Provide email logs and reports in the admin interface.
+        - [ ] **Integration with WordPress Email System:**
+            - [ ] Utilize WordPress `wp_mail()` function for sending emails.
+            - [ ] Ensure compatibility with WordPress email settings and plugins.
+            - [ ] Allow users to configure SMTP settings or use external email services.
+        - [ ] **Settings and Configuration:**
+            - [ ] Create a settings page for EmailNotifier module to configure:
+                - [ ] Default email settings (sender name, email address).
+                - [ ] SMTP settings or external email service integration.
+                - [ ] Notification event configurations.
+                - [ ] Email template customization options.
+                - [ ] Email logging and tracking preferences.
+
+    - [ ] **Email Template System:**
+        - [ ] Design a flexible email template system.
+        - [ ] Use template files (e.g., HTML or plain text) for email content.
+        - [ ] Implement placeholders or template variables for dynamic content insertion.
+        - [ ] Allow users to customize email templates via the admin interface.
+
+    - [ ] **Email Queue Implementation:**
+        - [ ] Choose an email queue mechanism (WP-Cron, Action Scheduler, or custom queue).
+        - [ ] Implement functions for adding emails to the queue and processing the queue.
+        - [ ] Ensure queue processing is reliable and scalable.
+
+    - [ ] **Database Design:**
+        - [ ] **Tables:**
+            - [ ] `adversarial_email_notifications_queue`:
+                - [ ] `queue_id` (BIGINT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `email_type` (VARCHAR, e.g., 'code_review_request', 'security_alert')
+                - [ ] `recipient_email` (VARCHAR)
+                - [ ] `subject` (VARCHAR)
+                - [ ] `body` (LONGTEXT)
+                - [ ] `headers` (TEXT, serialized array)
+                - [ ] `attachments` (TEXT, serialized array)
+                - [ ] `status` (ENUM 'pending', 'processing', 'sent', 'failed')
+                - [ ] `created_at` (TIMESTAMP)
+                - [ ] `processed_at` (TIMESTAMP, nullable)
+                - [ ] `error_message` (TEXT, nullable)
+            - [ ] `adversarial_email_notifications_log`:
+                - [ ] `log_id` (BIGINT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `queue_id` (BIGINT, FOREIGN KEY to `adversarial_email_notifications_queue`)
+                - [ ] `email_type` (VARCHAR)
+                - [ ] `recipient_email` (VARCHAR)
+                - [ ] `subject` (VARCHAR)
+                - [ ] `status` (VARCHAR)
+                - [ ] `sent_at` (TIMESTAMP)
+        - [ ] **Indexes:**
+            - [ ] Add indexes to `email_type`, `recipient_email`, `status` in queue table.
+            - [ ] Add index to `queue_id` in log table.
+
+    - [ ] **Class Implementation:**
+        - [ ] Create `EmailNotifier.php` class with methods for:
+            - [ ] Sending email notifications for different events.
+            - [ ] Managing email templates and content.
+            - [ ] Implementing email queue and delivery system.
+            - [ ] Handling email logging and tracking.
+            - [ ] Integrating with WordPress email system.
+            - [ ] Managing settings and configurations.
+
+    - [ ] **Testing:**
+        - [ ] Unit tests for email sending functionality, template processing, queue management.
+        - [ ] Integration tests for event-based notifications and WordPress email system integration.
+        - [ ] Email delivery testing and error handling.
+        - [ ] User acceptance testing for notification settings and email customization.
+
+- [ ] Implement and complete includes/GitIntegration.php
+    - [ ] **Feature Planning:**
+        - [ ] **Git Repository Integration:**
+            - [ ] Integrate with Git repositories (e.g., GitHub, GitLab, Bitbucket).
+            - [ ] Support connecting to private and public repositories.
+            - [ ] Handle authentication using API keys or OAuth.
+        - [ ] **Code Commit and Push:**
+            - [ ] Allow users to commit code changes directly from the plugin interface.
+            - [ ] Implement push functionality to remote Git repositories.
+            - [ ] Stage changes, write commit messages, and manage branches.
+        - [ ] **Code History and Diff Viewing:**
+            - [ ] Browse commit history within the plugin.
+            - [ ] View code diffs for commits and branches.
+            - [ ] Compare different versions of code files.
+        - [ ] **Branch Management:**
+            - [ ] List and manage branches in the repository.
+            - [ ] Create, switch, and delete branches.
+            - [ ] Merge branches (if feasible within the plugin context).
+        - [ ] **Pull Requests/Merge Requests Integration:**
+            - [ ] Integrate with pull request/merge request workflows.
+            - [ ] View open pull requests/merge requests.
+            - [ ] Create pull requests/merge requests from within the plugin.
+            - [ ] (Limited) Review pull requests/merge requests (view diffs, comments).
+        - [ ] **Status and Notifications:**
+            - [ ] Display Git repository status (branch, commit, changes).
+            - [ ] Provide notifications for Git events (new commits, pull requests).
+        - [ ] **Settings and Configuration:**
+            - [ ] Create a settings page for GitIntegration module to configure:
+                - [ ] Git repository connection settings (URL, credentials).
+                - [ ] Authentication method (API key, OAuth).
+                - [ ] Default commit settings.
+                - [ ] Branch management options.
+                - [ ] Notification preferences.
+
+    - [ ] **Git Client Integration:**
+        - [ ] Choose a Git client library or method for interacting with Git repositories (e.g., PHP Git libraries, system `git` command).
+        - [ ] Handle Git commands and responses within the plugin.
+        - [ ] Ensure compatibility with different Git hosting services.
+
+    - [ ] **Authentication and Authorization:**
+        - [ ] Implement secure authentication methods for Git repositories (API keys, OAuth).
+        - [ ] Store credentials securely (using WordPress credentials API).
+        - [ ] Handle authorization and permissions for Git operations.
+
+    - [ ] **Database Design:**
+        - [ ] **Tables:**
+            - [ ] `adversarial_git_repositories`:
+                - [ ] `repository_id` (INT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `user_id` (INT, FOREIGN KEY to users table)
+                - [ ] `repository_url` (VARCHAR)
+                - [ ] `authentication_type` (ENUM 'api_key', 'oauth')
+                - [ ] `api_key` (VARCHAR, encrypted)
+                - [ ] `oauth_token` (TEXT, encrypted)
+                - [ ] `default_branch` (VARCHAR)
+            - [ ] `adversarial_git_commits_log`:
+                - [ ] `commit_log_id` (BIGINT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `repository_id` (INT, FOREIGN KEY to `adversarial_git_repositories`)
+                - [ ] `commit_hash` (VARCHAR)
+                - [ ] `author_user_id` (INT, FOREIGN KEY to users table)
+                - [ ] `commit_message` (TEXT)
+                - [ ] `committed_at` (TIMESTAMP)
+        - [ ] **Indexes:**
+            - [ ] Add indexes to `repository_url`, `user_id` in repositories table.
+            - [ ] Add index to `repository_id` in commits log table.
+
+    - [ ] **Class Implementation:**
+        - [ ] Create `GitIntegration.php` class with methods for:
+            - [ ] Connecting to Git repositories.
+            - [ ] Committing and pushing code changes.
+            - [ ] Browsing commit history and viewing diffs.
+            - [ ] Managing branches.
+            - [ ] Integrating with pull requests/merge requests.
+            - [ ] Displaying Git status and notifications.
+            - [ ] Handling settings and configurations.
+
+    - [ ] **UI/UX Design:**
+        - [ ] Design user-friendly interfaces for:
+            - [ ] Connecting to Git repositories.
+            - [ ] Committing and pushing code changes.
+            - [ ] Browsing commit history and viewing diffs.
+            - [ ] Managing branches and pull requests.
+            - [ ] Displaying Git status and notifications.
+            - [ ] Configuring GitIntegration settings.
+
+    - [ ] **Security:**
+        - [ ] Securely store Git credentials (API keys, OAuth tokens) using WordPress credentials API).
+        - [ ] Handle authentication and authorization for Git operations.
+        - [ ] Prevent exposure of sensitive Git information.
+
+    - [ ] **Testing:**
+        - [ ] Unit tests for Git repository connection, commit/push functionality, branch management.
+        - [ ] Integration tests for Git workflow and pull request integration.
+        - [ ] Authentication and authorization testing.
+        - [ ] User acceptance testing for UI/UX and usability of Git integration features.
+
+- [ ] Implement and complete includes/HelpDocumentation.php
+    - [ ] **Feature Planning:**
+        - [ ] **Contextual Help Documentation:**
+            - [ ] Provide contextual help documentation within the plugin admin interface.
+            - [ ] Display help tips, guides, and explanations for different features and settings.
+            - [ ] Use tooltips, inline help text, and help tabs for contextual assistance.
+        - [ ] **Comprehensive Documentation Pages:**
+            - [ ] Create dedicated documentation pages for each plugin module and feature.
+            - [ ] Organize documentation into logical sections and categories.
+            - [ ] Include detailed explanations, usage examples, and troubleshooting tips.
+        - [ ] **Searchable Documentation:**
+            - [ ] Implement a search functionality to allow users to search for specific documentation topics.
+            - [ ] Index documentation content for efficient searching.
+        - [ ] **FAQ Section:**
+            - [ ] Create a frequently asked questions (FAQ) section to address common user queries.
+            - [ ] Organize FAQs by category or topic.
+        - [ ] **Onboarding Tutorials and Guides:**
+            - [ ] Develop onboarding tutorials and step-by-step guides for new users.
+            - [ ] Use interactive tutorials or video guides to demonstrate plugin usage.
+            - [ ] Integrate onboarding tutorials into the plugin admin dashboard.
+        - [ ] **User Support Channels:**
+            - [ ] Provide links to user support channels (e.g., support forums, email support).
+            - [ ] Integrate a contact form for users to submit support requests.
+        - [ ] **Documentation Management System:**
+            - [ ] Choose a system for managing documentation content (e.g., Markdown files, WordPress posts, external documentation platform).
+            - [ ] Implement a way to update and maintain documentation easily.
+        - [ ] **Settings and Configuration:**
+            - [ ] Create a settings page for HelpDocumentation module to configure:
+                - [ ] Documentation display options.
+                - [ ] Search functionality settings.
+                - [ ] Links to support channels.
+
+    - [ ] **Documentation Content Creation:**
+        - [ ] **Plan and write documentation content for all plugin features and modules.**
+            - [ ] Start with core functionalities and settings.
+            - [ ] Document each feature in detail, including usage instructions, examples, and best practices.
+            - [ ] Create FAQs based on anticipated user questions and common issues.
+        - [ ] **Organize documentation content logically for easy navigation.**
+            - [ ] Use clear headings, subheadings, and formatting.
+            - [ ] Create a table of contents or index for documentation pages.
+            - [ ] Link related documentation topics together.
+        - [ ] **Ensure documentation is accurate, up-to-date, and comprehensive.**
+            - [ ] Review and update documentation regularly as plugin features evolve.
+            - [ ] Get feedback from users and incorporate it into documentation improvements.
+
+    - [ ] **UI/UX Design:**
+        - [ ] Design user-friendly interfaces for:
+            - [ ] Displaying contextual help documentation within admin pages.
+            - [ ] Navigating comprehensive documentation pages.
+            - [ ] Searching documentation content.
+            - [ ] Accessing FAQs and onboarding tutorials.
+            - [ ] Configuring HelpDocumentation settings.
+
+    - [ ] **Integration with Plugin UI:**
+        - [ ] Integrate help documentation seamlessly into the plugin admin interface.
+        - [ ] Use WordPress help tabs, tooltips, and inline help elements.
+        - [ ] Ensure documentation is easily accessible from relevant plugin sections.
+
+    - [ ] **Testing:**
+        - [ ] Test contextual help documentation in different admin pages.
+        - [ ] Verify search functionality and accuracy of search results.
+        - [ ] Review documentation content for clarity, completeness, and accuracy.
+        - [ ] User acceptance testing for usability and effectiveness of help documentation.
+
+- [ ] Implement and complete includes/LLMHandler.php
+    - [ ] **Feature Planning:**
+        - [ ] **LLM API Integration:**
+            - [ ] Integrate with one or more Language Model (LLM) APIs (e.g., OpenAI, Cohere, AI21 Labs, Hugging Face Inference API).
+            - [ ] Support different LLM models and versions.
+            - [ ] Handle API authentication and authorization.
+        - [ ] **LLM Functionalities:**
+            - [ ] Implement various LLM functionalities:
+                - [ ] Code generation and completion.
+                - [ ] Code analysis and bug detection.
+                - [ ] Code refactoring and optimization.
+                - [ ] Code explanation and documentation.
+                - [ ] Natural language to code conversion.
+                - [ ] Adversarial code generation for bug testing.
+            - [ ] Make LLM functionalities configurable and extensible.
+        - [ ] **Prompt Engineering and Management:**
+            - [ ] Develop effective prompts for different LLM functionalities.
+            - [ ] Allow users to customize prompts or use pre-defined prompt templates.
+            - [ ] Manage and store prompts for different tasks.
+        - [ ] **Rate Limiting and Error Handling:**
+            - [ ] Implement rate limiting to prevent API overuse and throttling.
+            - [ ] Handle API errors gracefully and provide informative error messages.
+            - [ ] Implement retry mechanisms for transient API errors.
+        - [ ] **Cost Management and Tracking:**
+            - [ ] Track API usage and costs associated with LLM requests.
+            - [ ] Provide cost estimation and usage reports.
+            - [ ] Implement budget limits or usage quotas (optional).
+        - [ ] **Caching and Performance Optimization:**
+            - [ ] Implement caching mechanisms to store LLM responses and reduce API calls.
+            - [ ] Optimize API request parameters and data handling for performance.
+        - [ ] **Settings and Configuration:**
+            - [ ] Create a settings page for LLMHandler module to configure:
+                - [ ] LLM API provider selection and API keys.
+                - [ ] LLM model selection and versions.
+                - [ ] Default settings for LLM functionalities.
+                - [ ] Prompt templates and customization options.
+                - [ ] Rate limiting and caching settings.
+                - [ ] Cost management and tracking preferences.
+
+    - [ ] **API Client Libraries:**
+        - [ ] Choose and integrate appropriate API client libraries for interacting with LLM APIs.
+        - [ ] Handle API request formatting and response parsing.
+        - [ ] Ensure compatibility with different LLM API specifications.
+
+    - [ ] **Prompt Engineering Best Practices:**
+        - [ ] Research and apply prompt engineering best practices for different LLM tasks.
+        - [ ] Design prompts that are clear, concise, and effective in eliciting desired LLM responses.
+        - [ ] Experiment with different prompt strategies and templates.
+
+    - [ ] **Security Considerations:**
+        - [ ] Securely store LLM API keys and credentials (using WordPress credentials API).
+        - [ ] Prevent exposure of sensitive API information.
+        - [ ] Sanitize and validate user inputs before sending them to LLM APIs.
+        - [ ] Be mindful of data privacy and security when handling user code and data with LLM APIs.
+
+    - [ ] **Database Design (for caching, usage tracking, etc.):**
+        - [ ] **Tables (if needed):**
+            - [ ] `adversarial_llm_cache`:
+                - [ ] `cache_id` (BIGINT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `request_hash` (VARCHAR, UNIQUE INDEX)
+                - [ ] `api_provider` (VARCHAR)
+                - [ ] `model_name` (VARCHAR)
+                - [ ] `prompt` (TEXT)
+                - [ ] `response` (LONGTEXT)
+                - [ ] `cached_at` (TIMESTAMP)
+                - [ ] `expires_at` (TIMESTAMP, nullable)
+            - [ ] `adversarial_llm_usage_log`:
+                - [ ] `usage_log_id` (BIGINT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `user_id` (INT, FOREIGN KEY to users table)
+                - [ ] `api_provider` (VARCHAR)
+                - [ ] `model_name` (VARCHAR)
+                - [ ] `functionality` (VARCHAR, e.g., 'code_generation', 'code_analysis')
+                - [ ] `tokens_consumed` (INT)
+                - [ ] `request_timestamp` (TIMESTAMP)
+        - [ ] **Indexes:**
+            - [ ] Add indexes to `request_hash`, `api_provider`, `model_name` in cache table.
+            - [ ] Add indexes to `user_id`, `api_provider`, `functionality` in usage log table.
+
+    - [ ] **Class Implementation:**
+        - [ ] Create `LLMHandler.php` class with methods for:
+            - [ ] Interacting with different LLM APIs.
+            - [ ] Implementing various LLM functionalities.
+            - [ ] Managing prompts and prompt templates.
+            - [ ] Handling rate limiting and error handling.
+            - [ ] Implementing caching and performance optimization.
+            - [ ] Tracking API usage and costs.
+            - [ ] Handling settings and configurations.
+
+    - [ ] **UI/UX Design:**
+        - [ ] Design user interfaces for:
+            - [ ] Accessing and using LLM functionalities within the plugin.
+            - [ ] Customizing prompts and settings.
+            - [ ] Viewing LLM usage and cost reports.
+            - [ ] Configuring LLMHandler settings.
+
+    - [ ] **Testing:**
+        - [ ] Unit tests for API client interactions, prompt processing, caching mechanisms.
+        - [ ] Integration tests for different LLM functionalities and API providers.
+        - [ ] Performance and scalability testing for LLM request handling.
+        - [ ] Security testing for API key management and data privacy.
+        - [ ] User acceptance testing for usability and effectiveness of LLM-powered features.
+
+- [ ] Implement and complete includes/Logger.php
+    - [ ] **Feature Planning:**
+        - [ ] **Centralized Logging System:**
+            - [ ] Implement a centralized logging system for the plugin.
+            - [ ] Handle different log levels (e.g., debug, info, warning, error, critical).
+            - [ ] Log messages to various destinations (e.g., database, file, system log).
+        - [ ] **Log Categories and Context:**
+            - [ ] Categorize log messages by module or functionality.
+            - [ ] Include contextual information in log messages (e.g., timestamp, user ID, request ID, source file, line number).
+        - [ ] **Log Filtering and Searching:**
+            - [ ] Implement log filtering based on log level, category, time range, and keywords.
+            - [ ] Provide a search interface to find specific log messages.
+        - [ ] **Log Retention and Rotation:**
+            - [ ] Configure log retention policies (e.g., keep logs for a certain period).
+            - [ ] Implement log rotation mechanisms to manage log file sizes.
+        - [ ] **Log Export and Reporting:**
+            - [ ] Allow exporting logs in different formats (e.g., CSV, JSON, text).
+            - [ ] Generate log reports and summaries.
+        - [ ] **Integration with WordPress Logging:**
+            - [ ] Integrate with WordPress logging mechanisms (e.g., `error_log()`, WP_DEBUG).
+            - [ ] Utilize WordPress logging constants and functions.
+        - [ ] **Settings and Configuration:**
+            - [ ] Create a settings page for Logger module to configure:
+                - [ ] Default log level.
+                - [ ] Log destinations (database, file, system log).
+                - [ ] Log file settings (path, rotation).
+                - [ ] Log retention policies.
+                - [ ] Log filtering and search options.
+
+    - [ ] **Logging Destinations:**
+        - [ ] **Database Logging:**
+            - [ ] Log messages to a dedicated database table.
+            - [ ] Design database schema for log messages.
+            - [ ] Implement efficient database logging functions.
+        - [ ] **File Logging:**
+            - [ ] Log messages to log files.
+            - [ ] Configure log file paths and naming conventions.
+            - [ ] Implement log rotation for file-based logs.
+        - [ ] **System Logging:**
+            - [ ] Utilize system logging facilities (e.g., syslog on Linux, Event Log on Windows).
+            - [ ] Ensure compatibility with system log configurations.
+
+    - [ ] **Log Message Formatting:**
+        - [ ] Define a consistent format for log messages.
+        - [ ] Include relevant contextual information in each log message (timestamp, log level, category, user ID, etc.).
+        - [ ] Make log format configurable (e.g., customizable timestamp format).
+
+    - [ ] **Database Design:**
+        - [ ] **Tables:**
+            - [ ] `adversarial_plugin_logs`:
+                - [ ] `log_id` (BIGINT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `timestamp` (TIMESTAMP)
+                - [ ] `log_level` (VARCHAR, e.g., 'debug', 'info', 'warning', 'error', 'critical')
+                - [ ] `category` (VARCHAR)
+                - [ ] `user_id` (INT, FOREIGN KEY to users table, nullable)
+                - [ ] `message` (LONGTEXT)
+                - [ ] `context_data` (LONGTEXT, serialized array, nullable)
+                - [ ] `source_file` (VARCHAR, nullable)
+                - [ ] `line_number` (INT, nullable)
+        - [ ] **Indexes:**
+            - [ ] Add indexes to `timestamp`, `log_level`, `category`, `user_id`.
+
+    - [ ] **Class Implementation:**
+        - [ ] Create `Logger.php` class with methods for:
+            - [ ] Logging messages at different log levels.
+            - [ ] Categorizing log messages.
+            - [ ] Adding contextual information to logs.
+            - [ ] Filtering and searching logs.
+            - [ ] Exporting and reporting logs.
+            - [ ] Handling log retention and rotation.
+            - [ ] Integrating with WordPress logging.
+            - [ ] Managing settings and configurations.
+
+    - [ ] **UI/UX Design:**
+        - [ ] Design user interfaces for:
+            - [ ] Viewing and searching plugin logs in the admin dashboard.
+            - [ ] Filtering logs by level, category, time range, etc.
+            - [ ] Exporting log data.
+            - [ ] Configuring Logger settings.
+
+    - [ ] **Performance:**
+        - [ ] Ensure logging operations are performant and do not significantly impact plugin performance.
+        - [ ] Implement asynchronous logging if necessary for performance-critical sections.
+        - [ ] Optimize database logging queries and file writing operations.
+
+    - [ ] **Testing:**
+        - [ ] Unit tests for logging functions, log filtering, log export.
+        - [ ] Integration tests for logging to different destinations (database, file, system log).
+        - [ ] Performance testing for logging operations.
+        - [ ] User acceptance testing for log viewing and searching UI.
+
+- [ ] Implement and complete includes/OnboardingTutorial.php
+    - [ ] **Feature Planning:**
+        - [ ] **Interactive Onboarding Tutorial:**
+            - [ ] Create an interactive onboarding tutorial for new plugin users.
+            - [ ] Guide users through key plugin features and functionalities step-by-step.
+            - [ ] Use tooltips, modals, and visual cues to highlight UI elements and guide user actions.
+        - [ ] **Tutorial Content and Structure:**
+            - [ ] Plan tutorial content and structure for different user roles or plugin modules.
+            - [ ] Break down complex features into smaller, manageable steps.
+            - [ ] Include clear instructions, examples, and best practices in the tutorial.
+        - [ ] **Progress Tracking and Persistence:**
+            - [ ] Track user progress through the onboarding tutorial.
+            - [ ] Allow users to pause and resume the tutorial later.
+            - [ ] Persist tutorial progress across user sessions.
+        - [ ] **Triggering and Displaying Tutorials:**
+            - [ ] Automatically trigger the onboarding tutorial for new users upon plugin activation or first login.
+            - [ ] Provide options to manually start or restart the tutorial.
+            - [ ] Display tutorial progress indicators and completion status.
+        - [ ] **Customization and Extensibility:**
+            - [ ] Make the onboarding tutorial customizable and extensible.
+            - [ ] Allow plugin developers to add or modify tutorial steps and content.
+            - [ ] Provide hooks or APIs for extending tutorial functionality.
+        - [ ] **Integration with Plugin UI:**
+            - [ ] Seamlessly integrate the onboarding tutorial into the plugin admin interface.
+            - [ ] Ensure tutorial UI elements are consistent with plugin design.
+        - [ ] **Settings and Configuration:**
+            - [ ] Create a settings page for OnboardingTutorial module to configure:
+                - [ ] Enable/disable onboarding tutorial.
+                - [ ] Tutorial trigger settings (automatic, manual).
+                - [ ] Tutorial content customization options.
+                - [ ] Progress tracking and persistence settings.
+
+    - [ ] **Tutorial Content Creation:**
+        - [ ] **Plan and write tutorial content for key plugin features.**
+            - [ ] Identify essential features for new users to learn first.
+            - [ ] Create step-by-step instructions and explanations for each feature.
+            - [ ] Include screenshots or short videos to illustrate UI elements and actions.
+        - [ ] **Structure tutorial content into logical steps and modules.**
+            - [ ] Organize tutorial steps in a progressive and easy-to-follow manner.
+            - [ ] Break down long tutorials into smaller modules or sections.
+            - [ ] Use clear headings and subheadings to structure content.
+        - [ ] **Make tutorial content engaging and user-friendly.**
+            - [ ] Use clear and concise language.
+            - [ ] Incorporate interactive elements and feedback.
+            - [ ] Keep tutorials short and focused on specific tasks.
+
+    - [ ] **UI/UX Design:**
+        - [ ] Design user-friendly UI elements for the onboarding tutorial.
+            - [ ] Tooltips, modals, progress bars, step indicators, etc.
+            - [ ] Ensure tutorial UI is visually appealing and non-intrusive.
+            - [ ] Make tutorial navigation clear and intuitive.
+        - [ ] **Accessibility Considerations:**
+            - [ ] Ensure tutorial UI is accessible to users with disabilities.
+            - [ ] Provide keyboard navigation and screen reader support for tutorial elements.
+
+    - [ ] **Progress Tracking Implementation:**
+        - [ ] Choose a method for tracking tutorial progress (user meta, database table, transients).
+        - [ ] Implement functions to store and retrieve tutorial progress for each user.
+        - [ ] Handle tutorial completion status and reset options.
+
+    - [ ] **Class Implementation:**
+        - [ ] Create `OnboardingTutorial.php` class with methods for:
+            - [ ] Displaying interactive onboarding tutorials.
+            - [ ] Managing tutorial content and structure.
+            - [ ] Tracking user progress through tutorials.
+            - [ ] Triggering and displaying tutorials based on user actions.
+            - [ ] Customizing and extending tutorial functionality.
+            - [ ] Handling settings and configurations.
+
+    - [ ] **Testing:**
+        - [ ] Test onboarding tutorial flow and step-by-step guidance.
+        - [ ] Verify progress tracking and persistence across sessions.
+        - [ ] Test tutorial triggering and display logic.
+        - [ ] User acceptance testing for tutorial usability and effectiveness in onboarding new users.
+
+- [ ] Implement and complete includes/PerformanceOptimizer.php
+    - [ ] **Feature Planning:**
+        - [ ] **Code Performance Analysis:**
+            - [ ] Implement tools to analyze plugin code performance.
+            - [ ] Identify performance bottlenecks and slow code sections.
+            - [ ] Measure execution time, memory usage, and database query performance.
+        - [ ] **Code Optimization Techniques:**
+            - [ ] Implement various code optimization techniques:
+                - [ ] Caching (object caching, transient caching, page caching).
+                - [ ] Database query optimization (indexing, efficient queries).
+                - [ ] Code minification and compression (CSS, JavaScript).
+                - [ ] Lazy loading of resources (images, scripts).
+                - [ ] Code refactoring for performance.
+            - [ ] Make optimization techniques configurable and selective.
+        - [ ] **Database Optimization:**
+            - [ ] Implement database optimization tools:
+                - [ ] Database index management.
+                - [ ] Query optimization suggestions.
+                - [ ] Database cleanup and maintenance tasks.
+            - [ ] Provide recommendations for database performance improvements.
+        - [ ] **Resource Optimization:**
+            - [ ] Optimize plugin resources (images, assets) for performance.
+            - [ ] Implement image optimization techniques (compression, resizing).
+            - [ ] Optimize CSS and JavaScript assets (minification, bundling).
+        - [ ] **Monitoring and Reporting:**
+            - [ ] Monitor plugin performance metrics over time.
+            - [ ] Generate performance reports and dashboards.
+            - [ ] Track performance improvements after applying optimizations.
+        - [ ] **Settings and Configuration:**
+            - [ ] Create a settings page for PerformanceOptimizer module to configure:
+                - [ ] Enable/disable performance analysis tools.
+                - [ ] Select optimization techniques to apply.
+                - [ ] Configure caching settings.
+                - [ ] Database optimization options.
+                - [ ] Resource optimization settings.
+                - [ ] Monitoring and reporting preferences.
+
+    - [ ] **Performance Analysis Tools:**
+        - [ ] **Code Profiling:**
+            - [ ] Integrate code profiling tools (e.g., Xdebug, Blackfire.io) for detailed performance analysis.
+            - [ ] Display profiling results in the plugin admin interface.
+            - [ ] Identify slow functions and code paths.
+        - [ ] **Database Query Analysis:**
+            - [ ] Analyze database queries executed by the plugin.
+            - [ ] Identify slow queries and potential performance issues.
+            - [ ] Provide query optimization suggestions.
+        - [ ] **Performance Monitoring:**
+            - [ ] Monitor key performance metrics (page load time, execution time, memory usage).
+            - [ ] Track performance trends over time.
+            - [ ] Set up performance alerts and notifications.
+
+    - [ ] **Optimization Techniques Implementation:**
+        - [ ] **Caching Mechanisms:**
+            - [ ] Implement object caching using WordPress object cache API.
+            - [ ] Utilize transient caching for temporary data storage.
+            - [ ] Implement page caching for static content (if applicable).
+            - [ ] Configure cache invalidation and purging strategies.
+        - [ ] **Database Query Optimization:**
+            - [ ] Analyze plugin database queries and identify optimization opportunities.
+            - [ ] Add appropriate indexes to database tables.
+            - [ ] Rewrite inefficient queries for better performance.
+        - [ ] **Resource Optimization:**
+            - [ ] Implement image optimization using WordPress image functions or external libraries.
+            - [ ] Minify and bundle CSS and JavaScript assets using build tools or WordPress plugins.
+            - [ ] Implement lazy loading for images and scripts using JavaScript techniques.
+
+    - [ ] **Database Design (for performance monitoring data, optimization logs, etc.):**
+        - [ ] **Tables (if needed):**
+            - [ ] `adversarial_performance_metrics`:
+                - [ ] `metric_id` (BIGINT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `timestamp` (TIMESTAMP)
+                - [ ] `metric_name` (VARCHAR)
+                - [ ] `metric_value` (FLOAT)
+                - [ ] `context_data` (LONGTEXT, serialized array, nullable)
+            - [ ] `adversarial_performance_optimizations_log`:
+                - [ ] `optimization_log_id` (BIGINT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `timestamp` (TIMESTAMP)
+                - [ ] `optimization_type` (VARCHAR)
+                - [ ] `status` (ENUM 'applied', 'skipped', 'failed')
+                - [ ] `details` (LONGTEXT, nullable)
+        - [ ] **Indexes:**
+            - [ ] Add indexes to `timestamp`, `metric_name` in metrics table.
+            - [ ] Add index to `optimization_type` in optimizations log table.
+
+    - [ ] **Class Implementation:**
+        - [ ] Create `PerformanceOptimizer.php` class with methods for:
+            - [ ] Analyzing code performance and identifying bottlenecks.
+            - [ ] Implementing various code optimization techniques.
+            - [ ] Optimizing database performance.
+            - [ ] Optimizing plugin resources.
+            - [ ] Monitoring plugin performance and generating reports.
+            - [ ] Handling settings and configurations.
+
+    - [ ] **UI/UX Design:**
+        - [ ] Design user interfaces for:
+            - [ ] Viewing performance analysis results and reports.
+            - [ ] Configuring performance optimization settings.
+            - [ ] Monitoring performance metrics and trends.
+            - [ ] Managing database optimizations.
+            - [ ] Configuring PerformanceOptimizer settings.
+
+    - [ ] **Testing:**
+        - [ ] Unit tests for performance analysis tools, caching mechanisms, optimization techniques.
+        - [ ] Integration tests for database optimization and resource optimization.
+        - [ ] Performance testing to measure the impact of optimization techniques.
+        - [ ] User acceptance testing for UI/UX and usability of performance optimization features.
+
+- [ ] Implement and complete includes/PrivateLLMSupport.php
+    - [ ] **Feature Planning:**
+        - [ ] **Private LLM Integration:**
+            - [ ] Support integration with private or locally hosted Language Models (LLMs).
+            - [ ] Allow users to connect to their own LLM instances or APIs.
+            - [ ] Support different private LLM deployment methods (e.g., local server, cloud instance).
+        - [ ] **Compatibility with Different Private LLMs:**
+            - [ ] Ensure compatibility with various private LLM implementations and APIs (e.g., self-hosted models, private cloud LLMs).
+            - [ ] Provide configuration options for different LLM API endpoints and authentication methods.
+        - [ ] **Secure Access and Authentication:**
+            - [ ] Implement secure access and authentication mechanisms for private LLMs.
+            - [ ] Handle API keys, tokens, or other authentication methods required by private LLMs.
+            - [ ] Store credentials securely (using WordPress credentials API).
+        - [ ] **Feature Parity with Public LLMs:**
+            - [ ] Aim for feature parity with public LLM integrations (in `LLMHandler.php`) when using private LLMs.
+            - [ ] Support similar functionalities (code generation, analysis, refactoring, etc.) with private LLMs.
+        - [ ] **Data Privacy and Security:**
+            - [ ] Emphasize data privacy and security when using private LLMs.
+            - [ ] Ensure user code and data are not exposed to external services when using private LLMs.
+            - [ ] Provide options for data anonymization or local processing if needed.
+        - [ ] **Resource Management and Performance:**
+            - [ ] Consider resource requirements and performance implications of using private LLMs.
+            - [ ] Provide guidance on recommended hardware or cloud resources for private LLM deployments.
+            - [ ] Implement efficient communication and data transfer with private LLMs.
+        - [ ] **Settings and Configuration:**
+            - [ ] Create a settings page for PrivateLLMSupport module to configure:
+                - [ ] Enable/disable private LLM support.
+                - [ ] Private LLM API endpoint and connection settings.
+                - [ ] Authentication method and credentials.
+                - [ ] Feature mapping and compatibility settings for private LLMs.
+                - [ ] Resource management and performance options.
+
+    - [ ] **Private LLM API Client Implementation:**
+        - [ ] Develop API client libraries or adapt existing ones for interacting with private LLM APIs.
+        - [ ] Handle API request formatting and response parsing for different private LLM APIs.
+        - [ ] Ensure robust error handling and communication with private LLM servers.
+
+    - [ ] **Compatibility Layer for LLM Functionalities:**
+        - [ ] Create a compatibility layer to map plugin LLM functionalities to different private LLM APIs.
+        - [ ] Abstract away API-specific details and provide a consistent interface for using LLM features regardless of the underlying private LLM implementation.
+        - [ ] Handle differences in API request/response formats and functionality support across private LLMs.
+
+    - [ ] **Security Considerations:**
+        - [ ] Securely store private LLM credentials and API keys (using WordPress credentials API).
+        - [ ] Ensure secure communication with private LLM servers (HTTPS, encryption).
+        - [ ] Prevent unauthorized access to private LLM instances or APIs.
+        - [ ] Address data privacy concerns and ensure user code and data are protected when using private LLMs.
+
+    - [ ] **Settings UI and Configuration:**
+        - [ ] Design user-friendly settings UI for configuring private LLM connections and settings.
+        - [ ] Provide clear instructions and guidance on how to connect to and authenticate with private LLM instances.
+        - [ ] Implement input validation and error handling for private LLM settings.
+
+    - [ ] **Testing:**
+        - [ ] Unit tests for private LLM API client implementation and compatibility layer.
+        - [ ] Integration tests for connecting to and using different private LLM instances.
+        - [ ] Security testing for credential management and secure communication with private LLMs.
+        - [ ] User acceptance testing for UI/UX and usability of private LLM support features.
+
+- [ ] Implement and complete includes/RealTimeCollaboration.php (Duplicate of Collaboration.php) - **SKIP**
+- [ ] Implement and complete includes/RealTimeColloboration.php (Duplicate of Collaboration.php) - **SKIP**
+- [ ] Implement and complete includes/Sandbox.php
+    - [ ] **Feature Planning:**
+        - [ ] **Code Execution Sandbox Environment:**
+            - [ ] Implement a secure sandbox environment for executing code snippets.
+            - [ ] Support multiple programming languages (PHP, Python, JavaScript, etc.).
+            - [ ] Isolate sandbox environment from the main WordPress system and server.
+        - [ ] **Code Execution and Output Display:**
+            - [ ] Allow users to execute code snippets within the sandbox.
+            - [ ] Display code execution output (stdout, stderr) in the plugin interface.
+            - [ ] Handle different output types (text, HTML, images).
+        - [ ] **Security and Isolation:**
+            - [ ] Ensure strong security and isolation of the sandbox environment.
+            - [ ] Prevent code from accessing sensitive data or system resources.
+            - [ ] Mitigate risks of code injection and malicious code execution.
+        - [ ] **Resource Limits and Control:**
+            - [ ] Implement resource limits for sandbox execution (time limit, memory limit, CPU usage).
+            - [ ] Control access to system resources and external networks from the sandbox.
+        - [ ] **Session Management and Persistence:**
+            - [ ] Manage sandbox sessions for individual users or code snippets.
+            - [ ] Persist sandbox environment state and data across sessions (optional).
+        - [ ] **Integration with Code Editor:**
+            - [ ] Integrate sandbox execution functionality directly into the code editor.
+            - [ ] Allow users to easily execute code snippets from the editor.
+            - [ ] Display sandbox output within the editor interface.
+        - [ ] **Settings and Configuration:**
+            - [ ] Create a settings page for Sandbox module to configure:
+                - [ ] Enable/disable sandbox functionality.
+                - [ ] Select supported programming languages.
+                - [ ] Configure resource limits (time, memory, CPU).
+                - [ ] Security settings and isolation options.
+                - [ ] Session management preferences.
+
+    - [ ] **Sandbox Technology Selection:**
+        - [ ] **Choose a suitable sandbox technology for code execution.**
+            - [ ] Containerization (Docker, LXC).
+            - [ ] Virtualization (Virtual Machines).
+            - [ ] Secure code execution environments (e.g., Firejail, seccomp-bpf).
+            - [ ] Online sandbox services (e.g., Judge0, PaizaCloud API).
+        - [ ] **Evaluate security, performance, and resource requirements of different sandbox technologies.**
+        - [ ] **Select a technology that best meets plugin needs and WordPress environment constraints.**
+
+    - [ ] **Security Implementation:**
+        - [ ] **Implement robust security measures to isolate the sandbox environment.**
+            - [ ] Use process isolation and sandboxing techniques.
+            - [ ] Apply strict resource limits and access controls.
+            - [ ] Sanitize code inputs and outputs to prevent injection attacks.
+        - [ ] **Regularly audit and update sandbox security configurations.**
+        - [ ] **Follow security best practices for sandbox environment setup and maintenance.**
+
+    - [ ] **Resource Management:**
+        - [ ] **Implement resource limit enforcement for sandbox execution.**
+            - [ ] Time limits to prevent infinite loops or long-running code.
+            - [ ] Memory limits to restrict memory usage and prevent crashes.
+            - [ ] CPU usage limits to control CPU consumption.
+        - [ ] **Monitor resource usage of sandbox processes.**
+        - [ ] **Provide options to configure resource limits based on user roles or plugin settings.**
+
+    - [ ] **Database Design (for session management, sandbox configurations, etc.):**
+        - [ ] **Tables (if needed):**
+            - [ ] `adversarial_code_sandbox_sessions`:
+                - [ ] `session_id` (BIGINT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `user_id` (INT, FOREIGN KEY to users table)
+                - [ ] `session_start_time` (TIMESTAMP)
+                - [ ] `session_end_time` (TIMESTAMP, nullable)
+                - [ ] `session_data` (LONGTEXT, serialized array, nullable)
+                - [ ] `language` (VARCHAR)
+                - [ ] `code_snippet_id` (INT, FOREIGN KEY to code snippets table, nullable)
+        - [ ] **Indexes:**
+            - [ ] Add indexes to `user_id`, `session_start_time` in sessions table.
+            - [ ] Add index to `code_snippet_id`.
+
+    - [ ] **Class Implementation:**
+        - [ ] Create `Sandbox.php` class with methods for:
+            - [ ] Setting up and managing sandbox environments.
+            - [ ] Executing code snippets within the sandbox.
+            - [ ] Displaying code execution output.
+            - [ ] Enforcing security and isolation of the sandbox.
+            - [ ] Implementing resource limits and control.
+            - [ ] Managing sandbox sessions.
+            - [ ] Integrating with code editor.
+            - [ ] Handling settings and configurations.
+
+    - [ ] **UI/UX Design:**
+        - [ ] Design user interfaces for:
+            - [ ] Executing code snippets in the sandbox from the code editor.
+            - [ ] Viewing sandbox execution output.
+            - [ ] Managing sandbox sessions (if applicable).
+            - [ ] Configuring Sandbox settings.
+
+    - [ ] **Testing:**
+        - [ ] Unit tests for sandbox setup, code execution, output handling, resource limit enforcement.
+        - [ ] Integration tests for sandbox integration with code editor.
+        - [ ] Security testing to verify sandbox isolation and prevent code injection.
+        - [ ] Performance testing for sandbox execution speed and resource usage.
+        - [ ] User acceptance testing for UI/UX and usability of sandbox features.
+
+- [ ] Implement and complete includes/Security.php (Duplicate of AdvancedSecurity.php) - **SKIP**
+- [ ] Implement and complete includes/Settings.php
+    - [ ] **Feature Planning:**
+        - [ ] **Centralized Plugin Settings Management:**
+            - [ ] Implement a centralized settings management system for the entire plugin.
+            - [ ] Provide a consistent API for accessing and modifying plugin settings.
+            - [ ] Utilize WordPress Settings API for managing settings pages and sections.
+        - [ ] **Modular Settings Structure:**
+            - [ ] Organize plugin settings into modules or feature-based sections.
+            - [ ] Create separate settings pages or tabs for different plugin modules (e.g., Advanced Security, Analytics, Code Editor).
+            - [ ] Allow modules to register their own settings within the centralized system.
+        - [ ] **Settings Validation and Sanitization:**
+            - [ ] Implement settings validation to ensure user inputs are valid and within acceptable ranges.
+            - [ ] Sanitize settings inputs to prevent security vulnerabilities (e.g., XSS, SQL injection).
+            - [ ] Provide informative error messages for invalid settings.
+        - [ ] **Default Settings and Reset Options:**
+            - [ ] Define default settings for all plugin options.
+            - [ ] Provide options to reset settings to default values (module-specific or plugin-wide).
+        - [ ] **Settings Import and Export:**
+            - [ ] Implement settings import and export functionality.
+            - [ ] Allow users to export settings to a file (e.g., JSON, CSV).
+            - [ ] Allow users to import settings from a file.
+        - [ ] **Settings API and Hooks:**
+            - [ ] Provide a clear and well-documented API for accessing and modifying plugin settings programmatically.
+            - [ ] Implement action hooks and filters for extending settings functionality and customization.
+        - [ ] **Settings UI Generation:**
+            - [ ] Develop a system to automatically generate settings UI elements based on settings definitions.
+            - [ ] Use WordPress Settings API UI elements (fields, sections, etc.).
+            - [ ] Simplify the process of creating and managing settings pages.
+
+    - [ ] **Settings Definition Structure:**
+        - [ ] **Define a structured format for defining plugin settings.**
+            - [ ] Use arrays or objects to represent settings definitions.
+            - [ ] Include metadata for each setting:
+                - [ ] Setting ID/name.
+                - [ ] Setting type (text, number, boolean, select, etc.).
+                - [ ] Default value.
+                - [ ] Validation rules.
+                - [ ] Sanitization callbacks.
+                - [ ] UI element type and options.
+                - [ ] Section and page assignment.
+                - [ ] Description and help text.
+        - [ ] **Create a central registry for settings definitions.**
+        - [ ] **Allow modules to register their settings definitions with the registry.**
+
+    - [ ] **Settings API Implementation:**
+        - [ ] **Implement functions for accessing and modifying settings values.**
+            - [ ] `get_setting( $setting_id, $module = null )`: Retrieve a setting value.
+            - [ ] `update_setting( $setting_id, $value, $module = null )`: Update a setting value.
+            - [ ] `delete_setting( $setting_id, $module = null )`: Delete a setting.
+            - [ ] `get_default_setting( $setting_id, $module = null )`: Get default value for a setting.
+            - [ ] `reset_settings( $module = null )`: Reset settings to defaults (for a module or plugin-wide).
+        - [ ] **Implement hooks for settings customization and extension.**
+            - [ ] Filters to modify setting values before retrieval or update.
+            - [ ] Actions to perform actions before or after settings updates.
+
+    - [ ] **Settings UI Generation Logic:**
+        - [ ] **Develop logic to automatically generate settings UI elements based on settings definitions.**
+            - [ ] Use WordPress `add_settings_section()` and `add_settings_field()` functions.
+            - [ ] Map setting types to appropriate UI fields (text input, checkboxes, dropdowns, etc.).
+            - [ ] Handle setting validation and sanitization in UI generation.
+        - [ ] **Create reusable UI components for common setting types.**
+        - [ ] **Allow customization of UI elements and settings page layout.**
+
+    - [ ] **Database Design (for storing plugin settings):**
+        - [ ] **Tables:**
+            - [ ] `adversarial_plugin_settings`:
+                - [ ] `setting_id` (VARCHAR, PRIMARY KEY) - Unique setting identifier (e.g., `advanced_security_scan_schedule`).
+                - [ ] `module` (VARCHAR, nullable) - Module associated with the setting (e.g., `advanced_security`, `analytics`).
+                - [ ] `setting_value` (LONGTEXT) - Serialized setting value.
+                - [ ] `default_value` (LONGTEXT) - Serialized default setting value.
+                - [ ] `autoload` (BOOLEAN, default: true) - Whether to autoload setting on plugin initialization.
+        - [ ] **Indexes:**
+            - [ ] Add index to `module` column for efficient settings retrieval by module.
+
+    - [ ] **Class Implementation:**
+        - [ ] Create `Settings.php` class with methods for:
+            - [ ] Registering plugin settings and modules.
+            - [ ] Defining settings structure and metadata.
+            - [ ] Implementing settings API (get, update, delete, reset).
+            - [ ] Generating settings UI pages and elements.
+            - [ ] Handling settings validation and sanitization.
+            - [ ] Implementing settings import/export.
+
+    - [ ] **UI/UX Design:**
+        - [ ] Design user-friendly settings pages for different plugin modules.
+        - [ ] Organize settings into logical sections and groups.
+        - [ ] Use clear labels, descriptions, and help text for settings.
+        - [ ] Provide intuitive UI elements for different setting types.
+        - [ ] Implement settings import/export UI.
+
+    - [ ] **Testing:**
+        - [ ] Unit tests for settings API functions (get, update, delete, reset).
+        - [ ] Integration tests for settings validation, sanitization, import/export.
+        - [ ] UI testing for settings pages and UI element generation.
+        - [ ] User acceptance testing for usability and effectiveness of settings management features.
+
+- [ ] Implement and complete includes/TranslationSupport.php
+    - [ ] **Feature Planning:**
+        - [ ] **Plugin Translation and Localization:**
+            - [ ] Implement translation and localization support for the plugin.
+            - [ ] Make all plugin text translatable using WordPress internationalization (i18n) functions.
+            - [ ] Support multiple languages and locales.
+        - [ ] **Language File Management:**
+            - [ ] Organize language files (POT, PO, MO files) in a dedicated directory.
+            - [ ] Generate POT file for plugin text domains.
+            - [ ] Provide instructions for creating and managing PO/MO files.
+        - [ ] **Text Domain and Localization Functions:**
+            - [ ] Define a unique text domain for the plugin.
+            - [ ] Use WordPress localization functions (`__()`, `_e()`, `_x()`, `_n()`, etc.) throughout the plugin code.
+            - [ ] Ensure proper usage of text domains and context for localization functions.
+        - [ ] **Language Switching and Selection:**
+            - [ ] Allow users to select their preferred plugin language (optional, if needed beyond WordPress language settings).
+            - [ ] Implement language switching functionality if necessary.
+            - [ ] Respect WordPress site language settings by default.
+        - [ ] **RTL Language Support:**
+            - [ ] Ensure plugin UI and layout are compatible with Right-to-Left (RTL) languages.
+            - [ ] Test plugin with RTL languages (e.g., Arabic, Hebrew).
+            - [ ] Apply RTL-specific CSS styles and adjustments if needed.
+        - [ ] **Community Translation Platform Integration (Optional):**
+            - [ ] Consider integrating with community translation platforms (e.g., translate.wordpress.org, POEditor, Loco Translate) to facilitate community contributions to plugin translations.
+        - [ ] **Settings and Configuration:**
+            - [ ] Create a settings page for TranslationSupport module to configure:
+                - [ ] Enable/disable plugin translation (if needed).
+                - [ ] Language selection options (if implementing language switching).
+                - [ ] RTL language support settings (if needed).
+                - [ ] Links to community translation platforms (optional).
+
+    - [ ] **Internationalization (i18n) Implementation:**
+        - [ ] **Identify all translatable text strings in the plugin code.**
+            - [ ] Scan plugin files for hardcoded text strings.
+            - [ ] Extract all user-facing text strings that need to be translated.
+        - [ ] **Wrap all translatable text strings with WordPress localization functions.**
+            - [ ] Use `__()`, `_e()`, `_x()`, `_n()`, `esc_attr__()`, `esc_html__()`, etc.
+            - [ ] Define a unique text domain for the plugin (e.g., `adversarial-bug-fixing`).
+            - [ ] Provide context for ambiguous text strings using `_x()`.
+            - [ ] Handle plural forms correctly using `_n()`.
+        - [ ] **Ensure proper usage of text domains and localization functions throughout the plugin.**
+        - [ ] **Review code for any missed translatable strings.**
+
+    - [ ] **Language File Generation and Management:**
+        - [ ] **Generate POT file for the plugin text domain.**
+            - [ ] Use `wp-cli pot generate` command or a POT file generation tool.
+            - [ ] Include all translatable strings in the POT file.
+        - [ ] **Organize language files (POT, PO, MO) in a dedicated `languages` directory within the plugin.**
+        - [ ] **Provide instructions for users and translators on how to create and manage PO/MO files.**
+            - [ ] Use tools like Poedit or Loco Translate for PO/MO file editing.
+            - [ ] Explain the process of translating strings and generating MO files.
+        - [ ] **Include language files in the plugin distribution package.**
+
+    - [ ] **RTL Language Support Implementation:**
+        - [ ] **Test plugin UI and layout with RTL languages (e.g., Arabic, Hebrew).**
+        - [ ] **Identify any layout issues or text alignment problems in RTL mode.**
+        - [ ] **Apply RTL-specific CSS styles and adjustments to fix layout issues.**
+            - [ ] Use CSS logical properties (e.g., `margin-inline-start`, `padding-inline-end`) for RTL compatibility.
+            - [ ] Create separate RTL stylesheets or use CSS preprocessors for RTL-specific styles.
+        - [ ] **Test plugin thoroughly with RTL languages after applying RTL styles.**
+
+    - [ ] **Class Implementation:**
+        - [ ] Create `TranslationSupport.php` class with methods for:
+            - [ ] Loading plugin text domain.
+            - [ ] Handling language switching and selection (if needed).
+            - [ ] Implementing RTL language support.
+            - [ ] Integrating with community translation platforms (optional).
+            - [ ] Handling settings and configurations.
+
+    - [ ] **UI/UX Design:**
+        - [ ] Design UI elements for language selection (if implementing language switching).
+        - [ ] Ensure plugin UI is properly displayed and functional in both LTR and RTL languages.
+        - [ ] Provide clear instructions and guidance on plugin translation and localization.
+        - [ ] Configure TranslationSupport settings page (if needed).
+
+    - [ ] **Testing:**
+        - [ ] Test plugin with different languages and locales.
+        - [ ] Verify that all translatable strings are properly translated.
+        - [ ] Test RTL language support and layout compatibility.
+        - [ ] Validate language file generation and management process.
+        - [ ] User acceptance testing for translation quality and localization effectiveness.
+
+- [ ] Implement and complete includes/UnitTestGenerator.php
+    - [ ] **Feature Planning:**
+        - [ ] **Automated Unit Test Generation:**
+            - [ ] Implement functionality to automatically generate unit tests for plugin code.
+            - [ ] Support different unit testing frameworks (e.g., PHPUnit, WP_UnitTestCase).
+            - [ ] Generate test cases for classes, functions, and methods.
+        - [ ] **Test Case Generation Strategies:**
+            - [ ] Implement various test case generation strategies:
+                - [ ] Basic test case scaffolding.
+                - [ ] Test case generation based on code structure and complexity.
+                - [ ] Test case generation using LLM-based code analysis and understanding.
+            - [ ] Make test case generation strategies configurable and selectable.
+        - [ ] **Test Data and Mocking:**
+            - [ ] Generate test data and mock objects for unit tests.
+            - [ ] Provide options to customize test data and mock behavior.
+            - [ ] Integrate with mocking frameworks (e.g., Mockery, PHPUnit Mock Objects).
+        - [ ] **Test Execution and Reporting:**
+            - [ ] Allow users to execute generated unit tests from the plugin interface.
+            - [ ] Display test execution results and reports.
+            - [ ] Integrate with test execution tools (e.g., PHPUnit command-line runner).
+        - [ ] **Test Coverage Analysis:**
+            - [ ] Integrate with code coverage analysis tools (e.g., PHPUnit code coverage, Xdebug).
+            - [ ] Generate test coverage reports to identify untested code sections.
+            - [ ] Display test coverage metrics in the plugin interface.
+        - [ ] **Test Suite Management:**
+            - [ ] Allow users to manage generated unit tests (view, edit, delete, organize).
+            - [ ] Create test suites and group related test cases.
+            - [ ] Implement test suite execution and reporting.
+        - [ ] **Settings and Configuration:**
+            - [ ] Create a settings page for UnitTestGenerator module to configure:
+                - [ ] Enable/disable unit test generation.
+                - [ ] Select unit testing framework.
+                - [ ] Configure test case generation strategies.
+                - [ ] Set up test data and mocking options.
+                - [ ] Configure test execution and reporting settings.
+                - [ ] Enable/disable test coverage analysis.
+
+    - [ ] **Code Analysis for Test Generation:**
+        - [ ] **Implement code analysis techniques to understand code structure and functionality.**
+            - [ ] Parse PHP code to identify classes, functions, methods, and control flow.
+            - [ ] Analyze code complexity and dependencies.
+            - [ ] Use static analysis tools to extract code information.
+        - [ ] **Use code analysis results to generate relevant and effective unit tests.**
+            - [ ] Generate test cases for different code paths and conditions.
+            - [ ] Create test assertions based on expected code behavior.
+            - [ ] Generate mock objects for dependencies and external interactions.
+        - [ ] **Integrate LLM-based code analysis for more advanced test case generation (optional).**
+            - [ ] Use LLMs to understand code semantics and generate more comprehensive and intelligent tests.
+
+    - [ ] **Test Framework Integration:**
+        - [ ] **Integrate with popular PHP unit testing frameworks (PHPUnit, WP_UnitTestCase).**
+            - [ ] Generate test class files and test methods in framework-compatible format.
+            - [ ] Use framework-specific assertion methods and test case structures.
+            - [ ] Provide options to select and configure the desired testing framework.
+        - [ ] **Handle framework-specific test execution and reporting.**
+            - [ ] Use framework command-line runners or APIs to execute tests.
+            - [ ] Parse test execution results and display them in the plugin UI.
+            - [ ] Generate test reports in framework-compatible formats (e.g., XML, HTML).
+
+    - [ ] **Test Data Generation and Mocking Implementation:**
+        - [ ] **Implement test data generation techniques to create realistic and relevant test inputs.**
+            - [ ] Generate sample data for different data types (integers, strings, arrays, objects).
+            - [ ] Create test data based on code input parameters and data structures.
+            - [ ] Provide options to customize test data generation rules.
+        - [ ] **Integrate with mocking frameworks (Mockery, PHPUnit Mock Objects) for dependency mocking.**
+            - [ ] Generate mock objects for class dependencies and external services.
+            - [ ] Define mock object behavior and expectations for test assertions.
+            - [ ] Provide UI options to configure mock objects and their behavior.
+
+    - [ ] **Database Design (for storing generated tests, test results, test suites, etc.):**
+        - [ ] **Tables (if needed):**
+            - [ ] `adversarial_unit_tests`:
+                - [ ] `test_id` (BIGINT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `test_name` (VARCHAR)
+                - [ ] `test_code` (LONGTEXT)
+                - [ ] `test_framework` (VARCHAR)
+                - [ ] `generated_at` (TIMESTAMP)
+                - [ ] `code_snippet_id` (INT, FOREIGN KEY to code snippets table, nullable)
+                - [ ] `class_name` (VARCHAR, nullable)
+                - [ ] `method_name` (VARCHAR, nullable)
+            - [ ] `adversarial_unit_test_results`:
+                - [ ] `test_result_id` (BIGINT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `test_id` (BIGINT, FOREIGN KEY to `adversarial_unit_tests`)
+                - [ ] `execution_time` (FLOAT)
+                - [ ] `result_status` (ENUM 'passed', 'failed', 'skipped', 'error')
+                - [ ] `assertion_count` (INT)
+                - [ ] `failure_details` (LONGTEXT, nullable)
+                - [ ] `executed_at` (TIMESTAMP)
+        - [ ] **Indexes:**
+            - [ ] Add indexes to `test_framework`, `code_snippet_id`, `class_name`, `method_name` in tests table.
+            - [ ] Add index to `test_id` in test results table.
+
+    - [ ] **Class Implementation:**
+        - [ ] Create `UnitTestGenerator.php` class with methods for:
+            - [ ] Analyzing code for unit test generation.
+            - [ ] Generating unit tests using different strategies.
+            - [ ] Integrating with unit testing frameworks.
+            - [ ] Generating test data and mock objects.
+            - [ ] Executing unit tests and reporting results.
+            - [ ] Performing test coverage analysis.
+            - [ ] Managing test suites and test cases.
+            - [ ] Handling settings and configurations.
+
+    - [ ] **UI/UX Design:**
+        - [ ] Design user interfaces for:
+            - [ ] Generating unit tests for code snippets or plugin modules.
+            - [ ] Viewing and managing generated unit tests.
+            - [ ] Executing unit tests and viewing test results.
+            - [ ] Displaying test coverage reports.
+            - [ ] Configuring UnitTestGenerator settings.
+
+    - [ ] **Testing:**
+        - [ ] Unit tests for code analysis, test case generation, test framework integration, test execution, test reporting.
+        - [ ] Integration tests for test data generation and mocking.
+        - [ ] Test coverage analysis for generated unit tests.
+        - [ ] User acceptance testing for UI/UX and usability of unit test generation and management features.
+
+- [ ] Implement and complete includes/UserCapabilities.php
+    - [ ] **Feature Planning:**
+        - [ ] **Custom User Capabilities Management:**
+            - [ ] Implement a system for defining and managing custom user capabilities for the plugin.
+            - [ ] Create new capabilities beyond default WordPress roles and capabilities.
+            - [ ] Define granular capabilities for different plugin features and actions.
+        - [ ] **Role-Based Capability Assignment:**
+            - [ ] Assign custom capabilities to WordPress user roles.
+            - [ ] Extend existing roles with new plugin-specific capabilities.
+            - [ ] Provide a UI for administrators to manage role-based capability assignments.
+        - [ ] **User-Specific Capability Overrides:**
+            - [ ] Allow overriding role-based capabilities for individual users.
+            - [ ] Grant or revoke specific capabilities for particular users, regardless of their roles.
+            - [ ] Implement user-specific capability exceptions and overrides.
+        - [ ] **Capability Checks and Enforcement:**
+            - [ ] Implement functions for checking user capabilities throughout the plugin code.
+            - [ ] Enforce capability checks to control access to plugin features and actions.
+            - [ ] Use WordPress `current_user_can()` function with custom capabilities.
+        - [ ] **Capability Groups and Organization:**
+            - [ ] Organize custom capabilities into logical groups or categories.
+            - [ ] Structure capabilities for better management and clarity.
+            - [ ] Use prefixes or namespaces for custom capability names.
+        - [ ] **Integration with Plugin Modules:**
+            - [ ] Allow different plugin modules to define and register their own custom capabilities.
+            - [ ] Centralize capability management within the UserCapabilities module.
+            - [ ] Provide APIs for modules to interact with the capability system.
+        - [ ] **Settings and Configuration:**
+            - [ ] Create a settings page for UserCapabilities module to configure:
+                - [ ] Define and manage custom capabilities.
+                - [ ] Assign capabilities to roles.
+                - [ ] Override capabilities for individual users.
+                - [ ] Configure capability groups and organization.
+
+    - [ ] **Capability Definition Structure:**
+        - [ ] **Define a structured format for defining custom user capabilities.**
+            - [ ] Use arrays or objects to represent capability definitions.
+            - [ ] Include metadata for each capability:
+                - [ ] Capability name (unique identifier).
+                - [ ] Capability description (human-readable).
+                - [ ] Capability group or category.
+                - [ ] Default assignment to roles (optional).
+        - [ ] **Create a central registry for capability definitions.**
+        - [ ] **Allow modules to register their capability definitions with the registry.**
+
+    - [ ] **Role-Based Capability Assignment UI:**
+        - [ ] **Develop a user interface for administrators to manage role-based capability assignments.**
+            - [ ] Display a matrix or table of roles and capabilities.
+            - [ ] Allow administrators to check/uncheck capabilities for each role.
+            - [ ] Provide search and filtering for roles and capabilities.
+            - [ ] Use WordPress UI elements and best practices for settings pages.
+
+    - [ ] **User-Specific Capability Overrides UI:**
+        - [ ] **Implement a user interface for managing user-specific capability overrides.**
+            - [ ] Display a list of users with capability overrides.
+            - [ ] Allow administrators to grant or revoke specific capabilities for individual users.
+            - [ ] Provide search and filtering for users.
+            - [ ] Use WordPress UI elements for user management and capability overrides.
+
+    - [ ] **Capability Check Functions Implementation:**
+        - [ ] **Implement functions for checking user capabilities in plugin code.**
+            - [ ] `has_plugin_capability( $capability_name, $user_id = null )`: Check if a user has a specific plugin capability.
+            - [ ] `current_user_has_capability( $capability_name )`: Check if the current user has a capability.
+            - [ ] Utilize WordPress `current_user_can()` function internally.
+            - [ ] Cache capability checks for performance optimization.
+        - [ ] **Provide clear documentation and examples for using capability check functions.**
+        - [ ] **Encourage developers to use capability checks throughout the plugin code.**
+
+    - [ ] **Database Design (for storing custom capabilities, role assignments, user overrides):**
+        - [ ] **Tables:**
+            - [ ] `adversarial_plugin_capabilities`:
+                - [ ] `capability_id` (VARCHAR, PRIMARY KEY) - Unique capability identifier (e.g., `edit_code_snippets`).
+                - [ ] `capability_description` (VARCHAR) - Human-readable capability description.
+                - [ ] `capability_group` (VARCHAR, nullable) - Capability group or category.
+            - [ ] `adversarial_role_capabilities`:
+                - [ ] `role_capability_id` (BIGINT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `role_name` (VARCHAR) - WordPress role name (e.g., `administrator`, `editor`).
+                - [ ] `capability_id` (VARCHAR, FOREIGN KEY to `adversarial_plugin_capabilities`)
+            - [ ] `adversarial_user_capabilities_override`:
+                - [ ] `user_capability_override_id` (BIGINT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `user_id` (INT, FOREIGN KEY to users table)
+                - [ ] `capability_id` (VARCHAR, FOREIGN KEY to `adversarial_plugin_capabilities`)
+                - [ ] `override_type` (ENUM 'grant', 'revoke') - Grant or revoke capability for the user.
+        - [ ] **Indexes:**
+            - [ ] Add index to `capability_group` in capabilities table.
+            - [ ] Add indexes to `role_name`, `capability_id` in role capabilities table.
+            - [ ] Add indexes to `user_id`, `capability_id` in user capabilities override table.
+            - [ ] Add UNIQUE index to `role_name` and `capability_id` in `adversarial_role_capabilities` to prevent duplicates.
+            - [ ] Add UNIQUE index to `user_id` and `capability_id` in `adversarial_user_capabilities_override` to prevent duplicates.
+
+    - [ ] **Class Implementation:**
+        - [ ] Create `UserCapabilities.php` class with methods for:
+            - [ ] Defining and registering custom capabilities.
+            - [ ] Assigning capabilities to roles.
+            - [ ] Overriding capabilities for individual users.
+            - [ ] Checking user capabilities.
+            - [ ] Managing capability groups and organization.
+            - [ ] Providing APIs for modules to interact with the capability system.
+            - [ ] Handling settings and configurations.
+
+    - [ ] **UI/UX Design:**
+        - [ ] Design user interfaces for:
+            - [ ] Managing custom capabilities (list, create, edit, delete).
+            - [ ] Assigning capabilities to roles (role-based capability management).
+            - [ ] Overriding capabilities for individual users (user-specific capability overrides).
+            - [ ] Configuring UserCapabilities settings.
+
+    - [ ] **Testing:**
+        - [ ] Unit tests for capability definition, role-based assignment, user-specific overrides, capability checks.
+        - [ ] Integration tests for capability enforcement in different plugin modules.
+        - [ ] User acceptance testing for UI/UX and usability of capability management features.
+        - [ ] Security testing for access control and capability enforcement mechanisms.
+
+- [ ] Implement and complete includes/VersionControl.php (Consider GitIntegration.php as primary version control) - **LOW PRIORITY - Review after GitIntegration.php**
+    - [ ] **Feature Planning:**
+        - [ ] **Code Versioning System:**
+            - [ ] Implement a code versioning system within the plugin.
+            - [ ] Track changes to code snippets, templates, and other plugin-managed code.
+            - [ ] Store versions of code and allow users to revert to previous versions.
+        - [ ] **Versioning Strategies:**
+            - [ ] Define versioning strategies for different types of code (snippets, templates, plugin files).
+            - [ ] Use different versioning approaches (e.g., sequential versions, timestamp-based versions, diff-based versions).
+        - [ ] **Version History and Comparison:**
+            - [ ] Display version history for code elements.
+            - [ ] Allow users to compare different versions of code (diff viewing).
+            - [ ] Highlight changes between versions.
+        - [ ] **Branching and Merging (Optional, Consider GitIntegration.php):**
+            - [ ] Implement basic branching and merging capabilities for code versions (if feasible and useful).
+            - [ ] Allow users to create branches, switch between branches, and merge changes.
+            - [ ] (Consider GitIntegration.php for more advanced branching and merging).
+        - [ ] **Integration with Code Editor:**
+            - [ ] Integrate version control features directly into the code editor.
+            - [ ] Allow users to access version history, compare versions, and revert changes from the editor.
+            - [ ] Display version indicators or status in the editor interface.
+        - [ ] **Integration with GitIntegration.php (If Implemented):**
+            - [ ] Integrate with GitIntegration.php to leverage Git for version control.
+            - [ ] Use Git repository as the backend for code versioning.
+            - [ ] Provide a higher-level abstraction for version control within the plugin.
+        - [ ] **Settings and Configuration:**
+            - [ ] Create a settings page for VersionControl module to configure:
+                - [ ] Enable/disable code versioning.
+                - [ ] Select versioning strategies.
+                - [ ] Configure version history retention.
+                - [ ] Branching and merging options (if implemented).
+                - [ ] Integration with GitIntegration.php (if implemented).
+
+    - [ ] **Versioning Backend Implementation:**
+        - [ ] **Choose a backend for storing code versions.**
+            - [ ] Database tables.
+            - [ ] File system (separate files for each version).
+            - [ ] Git repository (using GitIntegration.php).
+        - [ ] **Implement functions for storing, retrieving, and managing code versions.**
+        - [ ] **Ensure efficient storage and retrieval of version data.**
+
+    - [ ] **Diff Viewing and Comparison Implementation:**
+        - [ ] **Integrate a diff viewing library or implement diff algorithm for comparing code versions.**
+            - [ ] Use libraries like Diffy, PHP Diff Lib, or similar.
+            - [ ] Display code diffs in a user-friendly format (side-by-side or inline).
+            - [ ] Highlight code changes (additions, deletions, modifications).
+        - [ ] **Implement version comparison functionality in the plugin UI.**
+        - [ ] **Allow users to easily compare any two versions of code.**
+
+    - [ ] **Branching and Merging Implementation (Optional):**
+        - [ ] **Implement basic branching and merging functionalities if needed.**
+            - [ ] Create branches from specific versions.
+            - [ ] Switch between branches.
+            - [ ] Merge changes from one branch to another.
+        - [ ] **(Consider GitIntegration.php for more advanced branching and merging features).**
+        - [ ] **Design UI elements for branch management (if implemented).**
+
+    - [ ] **Database Design (for storing code versions, version history, branches):**
+        - [ ] **Tables (if using database backend):**
+            - [ ] `adversarial_code_versions`:
+                - [ ] `version_id` (BIGINT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `code_type` (VARCHAR, e.g., 'snippet', 'template', 'plugin_file')
+                - [ ] `code_id` (INT) - ID of the code element being versioned (e.g., `snippet_id`, `template_id`).
+                - [ ] `version_number` (INT) - Sequential version number.
+                - [ ] `version_timestamp` (TIMESTAMP)
+                - [ ] `content` (LONGTEXT) - Code content for this version.
+                - [ ] `version_comment` (VARCHAR, nullable) - Optional version comment.
+                - [ ] `branch_id` (INT, FOREIGN KEY to `adversarial_code_branches`, nullable) - Branch this version belongs to (if branching implemented).
+            - [ ] `adversarial_code_branches` (Optional, if branching implemented):
+                - [ ] `branch_id` (INT, PRIMARY KEY, AUTO_INCREMENT)
+                - [ ] `branch_name` (VARCHAR)
+                - [ ] `code_type` (VARCHAR, e.g., 'snippet', 'template')
+                - [ ] `code_id` (INT) - ID of the code element.
+                - [ ] `created_at` (TIMESTAMP)
+                - [ ] `created_by_user_id` (INT, FOREIGN KEY to users table)
+        - [ ] **Indexes:**
+            - [ ] Add indexes to `code_type`, `code_id`, `version_number` in versions table.
+            - [ ] Add indexes to `code_type`, `code_id` in branches table (if implemented).
+
+    - [ ] **Class Implementation:**
+        - [ ] Create `VersionControl.php` class with methods for:
+            - [ ] Storing and retrieving code versions.
+            - [ ] Displaying version history and comparing versions.
+            - [ ] Implementing branching and merging (optional).
+            - [ ] Integrating with code editor.
+            - [ ] Integrating with GitIntegration.php (optional).
+            - [ ] Handling settings and configurations.
+
+    - [ ] **UI/UX Design:**
+        - [ ] Design user interfaces for:
+            - [ ] Viewing version history for code elements.
+            - [ ] Comparing different versions of code (diff viewer).
+            - [ ] Reverting to previous versions.
+            - [ ] Branch management UI (if branching implemented).
+            - [ ] Configuring VersionControl settings.
+
+    - [ ] **Testing:**
+        - [ ] Unit tests for version storage, retrieval, diff viewing, version comparison.
+        - [ ] Integration tests for version control integration with code editor.
+        - [ ] Branching and merging testing (if implemented).
+        - [ ] User acceptance testing for UI/UX and usability of version control features.
+
+- [ ] Implement and complete includes/WorkflowManager.php
+    - [ ] **Feature Planning:**
+        - [ ] **Plugin Workflow Automation:**
+            - [ ] Implement a workflow management system to automate plugin tasks and processes.

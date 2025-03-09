@@ -1,198 +1,343 @@
+<?php
+/**
+ * Class AdvancedSecurity
+ *
+ * Handles advanced security functionalities for the plugin, including security scans, 
+ * vulnerability reporting, and security settings management.
+ */
 class AdvancedSecurity {
-    private $vulnerability_db;
-    
+    /**
+     * @var string $table_name The name of the database table for storing security related data.
+     */
+    private $table_name;
+
+    /**
+     * @var string $version The version of the AdvancedSecurity class.
+     */
+    private $version = '1.0';
+
+    /**
+     * @var Database Database instance for data operations.
+     */
+    private $db;
+
+    /**
+     * Constructor for the AdvancedSecurity class.
+     *
+     * Initializes the Database instance and sets up the database table name and actions.
+     */
     public function __construct() {
-        $this->load_vulnerability_database();
+        $this->db = Database::get_instance();
+        $this->table_name = $this->db->get_table_name('adversarial_advanced_security');
+        register_activation_hook(__FILE__, [$this, 'install']);
+        $this->register_admin_hooks();
     }
 
-    private function load_vulnerability_database() {
-        $upload_dir = wp_upload_dir();
-        $default_db_path = trailingslashit($upload_dir['basedir']) . 'adversarial-code-generator/security/vulnerabilities.json';
-        $db_path_option = get_option('adversarial_settings');
-        $db_path = isset($db_path_option['vulnerability_db_path']) ? $db_path_option['vulnerability_db_path'] : $default_db_path;
+    /**
+     * Installation function for the AdvancedSecurity module.
+     *
+     * Creates the database table to store security related data, such as scan results and vulnerabilities, using Database class.
+     * @global wpdb $wpdb WordPress database abstraction object.
+     */
+    public function install() {
+        $table_name = $this->table_name;
+        $charset_collate = $this->db->wpdb->get_charset_collate();
+        $sql = "CREATE TABLE $table_name (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id BIGINT UNSIGNED NOT NULL,
+            event_type VARCHAR(255) NOT NULL,
+            scan_result_summary TEXT NULL,
+            scan_details LONGTEXT NULL,
+            vulnerability_severity VARCHAR(50) NULL,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY user_id (user_id),
+            KEY scan_type (scan_type),
+            KEY vulnerability_severity (vulnerability_severity)
+        ) $charset_collate;";
+        $this->db->install_table($table_name, $sql);
+    }
 
+    /**
+     * Logs security events to the database using Database class.
+     *
+     * @param int $user_id The ID of the user related to the security event.
+     * @param string $scan_type Type of security scan performed (e.g., 'php_syntax_check', 'javascript_lint', 'security_scan').
+     * @param string $scan_result_summary Summary of the scan result.
+     * @param array $scan_details Detailed results of the security scan (e.g., array of vulnerabilities).
+     * @param string $vulnerability_severity Severity level of the vulnerability (e.g., 'high', 'medium', 'low').
+     */
+    public function log_security_scan_result($user_id, $scan_type, $scan_result_summary, $scan_details, $vulnerability_severity = null) {
+        $this->db->insert(
+            $this->table_name,
+            [
+                'user_id' => $user_id,
+                'scan_type' => sanitize_key($scan_type),
+                'scan_result_summary' => sanitize_textarea_field($scan_result_summary),
+                'scan_details' => maybe_serialize($scan_details),
+                'vulnerability_severity' => sanitize_text_field($vulnerability_severity),
+            ],
+            [
+                '%d',
+                '%s',
+                '%s',
+                '%s',
+                '%s'
+            ]
+        );
+    }
 
-        if (!file_exists($db_path)) {
-            // Initialize with default vulnerabilities
-            $default_vulnerabilities = [
-                [
-                    "title" => "SQL Injection",
-                    "description" => "Detects potential SQL injection vulnerabilities.",
-                    "severity" => "critical",
-                    "pattern" => "/\b(SELECT|INSERT|UPDATE|DELETE)\s+.*\s+FROM\s+.*\s+WHERE\s+.*['\"].*\b/",
-                    "references" => ["https://owasp.org/www-project-top-ten/OWASP_Top_Ten/A03_2021-Injection/"]
-                ],
-                [
-                    "title" => "Cross-Site Scripting (XSS)",
-                    "description" => "Detects potential cross-site scripting vulnerabilities.",
-                    "severity" => "high",
-                    "pattern" => "/<script\b[^>]*>([\s\S]*?)<\/script>/i",
-                    "references" => ["https://owasp.org/www-project-top-ten/OWASP_Top_Ten/A03_2021-Injection/"]
-                ],
-                [
-                    "title" => "Command Injection",
-                    "description" => "Detects potential command injection vulnerabilities.",
-                    "severity" => "critical",
-                    "pattern" => "/\b(system|exec|shell_exec|passthru|popen|proc_open|pcntl_exec)\s*\(.*?\)/",
-                    "references" => ["https://owasp.org/www-project-top-ten/OWASP_Top_Ten/A03_2021-Injection/"]
-                ],
-                [
-                    "title" => "Path Traversal",
-                    "description" => "Detects potential path traversal vulnerabilities.",
-                    "severity" => "high",
-                    "pattern" => "/\.\.\//",
-                    "references" => ["https://owasp.org/www-project-top-ten/OWASP_Top_Ten/A01_2021-Broken_Access_Control/"]
-                ],
-                [
-                    "title" => "File Inclusion",
-                    "description" => "Detects potential file inclusion vulnerabilities.",
-                    "severity" => "high",
-                    "pattern" => "/(include|require)(_once)?\s*\(.*?\)/",
-                    "references" => ["https://owasp.org/www-project-top-ten/OWASP_Top_Ten/A01_2021-Broken_Access_Control/"]
-                ],
-                [
-                    "title" => "Unsafe Deserialization",
-                    "description" => "Detects potential unsafe deserialization vulnerabilities.",
-                    "severity" => "high",
-                    "pattern" => "/(unserialize|php_unserialize)\s*\(.*?\)/",
-                    "references" => ["https://owasp.org/www-project-top-ten/OWASP_Top_Ten/A08_2021-Software_and_Data_Integrity_Failures/"]
-                ]
-            ];
-            file_put_contents($db_path, wp_json_encode($default_vulnerabilities, JSON_PRETTY_PRINT));
+    /**
+     * Retrieves security scan logs from the database with pagination and filtering.
+     *
+     * @param int $per_page Number of logs per page.
+     * @param int $page_number Current page number.
+     * @param string $search_term Search term to filter logs.
+     * @param string $scan_type_filter Scan type to filter logs.
+     * @param string $vulnerability_severity_filter Vulnerability severity to filter logs.
+     * @return array Array of security scan log objects.
+     */
+    public function get_security_scan_logs( $per_page = 20, $page_number = 1, $search_term = '', $scan_type_filter = '', $vulnerability_severity_filter = '' ) {
+        $table_name = $this->table_name;
+        $offset = ( $page_number - 1 ) * $per_page;
+        $sql = "SELECT * FROM $table_name WHERE 1=1";
+
+        if ( ! empty( $search_term ) ) {
+            $search_term = esc_sql( $search_term );
+            $sql .= " AND scan_result_summary LIKE '%{$search_term}%'";
         }
-        
-        $this->vulnerability_db = json_decode(file_get_contents($db_path), true);
-    }
-
-    public function scan_for_vulnerabilities($code) {
-        $findings = [];
-        
-        foreach ($this->vulnerability_db as $index => $vulnerability) {
-            if (isset($vulnerability['pattern'])) {
-                if (preg_match($vulnerability['pattern'], $code, $matches)) {
-                    $findings[] = [
-                        'index' => $index, // Include index for editing/deletion
-                        'title' => $vulnerability['title'],
-                        'description' => $vulnerability['description'],
-                        'severity' => $vulnerability['severity'],
-                        'references' => $vulnerability['references'],
-                        'match' => $matches[0] // Matched code snippet
-                    ];
-                }
-            }
+        if ( ! empty( $scan_type_filter ) ) {
+            $scan_type_filter = esc_sql( $scan_type_filter );
+            $sql .= " AND scan_type = '{$scan_type_filter}'";
         }
-        
-        return $findings;
-    }
-
-    public function harden_code($code) {
-        $findings = $this->scan_for_vulnerabilities($code);
-        $hardened_code = $code;
-        
-        foreach ($findings as $finding) {
-            if (isset($finding['match'])) {
-                $replacement = $this->get_safe_replacement($finding);
-                $hardened_code = str_replace($finding['match'], $replacement, $hardened_code);
-            }
+        if ( ! empty( $vulnerability_severity_filter ) ) {
+            $vulnerability_severity_filter = esc_sql( $vulnerability_severity_filter );
+            $sql .= " AND vulnerability_severity = '{$vulnerability_severity_filter}'";
         }
-        
-        return $hardened_code;
+
+        $sql .= " ORDER BY timestamp DESC LIMIT %d OFFSET %d";
+
+        $prepared_query = $this->db->wpdb->prepare( $sql, $per_page, $offset );
+        $results = $this->db->wpdb->get_results( $prepared_query );
+        return $results;
     }
 
-    private function get_safe_replacement($finding) {
-        $title = $finding['title'];
-        $match = $finding['match'];
+    /**
+     * Gets the total count of security scan logs, considering search and filter terms.
+     *
+     * @param string $search_term Search term to filter logs.
+     * @param string $event_type_filter Scan type to filter logs.
+     * @param string $vulnerability_severity_filter Vulnerability severity to filter logs.
+     * @return int Total count of security scan logs.
+     */
+    public function get_total_security_log_count( $search_term = '', $scan_type_filter = '', $vulnerability_severity_filter = '' ) {
+        $table_name = $this->table_name;
+        $sql = "SELECT COUNT(*) FROM $table_name WHERE 1=1";
 
-        switch ($title) {
-            case 'SQL Injection':
-                // Stronger warning about SQL Injection
-                return "// CRITICAL: SQL Injection vulnerability found: " . $match . ". автоматическое hardening is not possible. обязательно use prepared statements or parameterized queries.";
-            case 'Cross-Site Scripting (XSS)':
-                // Apply basic HTML escaping for XSS
-                return esc_html($match) . " /* XSS vulnerability was found and automatically sanitized using esc_html(). Verify context-appropriate escaping. */";
-            case 'Command Injection':
-                // Emphasize input sanitization and escaping
-                return "// CRITICAL: Command Injection vulnerability found: " . $match . ". автоматическое hardening is not fully reliable. строго avoid system commands. If absolutely necessary, sanitize inputs тщательно with escapeshellarg() or escapeshellcmd().";
-            case 'Path Traversal':
-                // More detailed suggestion for path traversal
-                return "// Path Traversal vulnerability found: " . $match . ". автоматическое hardening requires context. Implement path sanitization using realpath() and строго whitelist allowed directories.";
-            case 'File Inclusion':
-                // Prevent execution for file inclusion
-                return "'/* File Inclusion vulnerability - execution prevented: " . $match . " */'"; 
-            case 'Unsafe Deserialization':
-                // Stronger warning against unserialize
-                return "// CRITICAL: Unsafe Deserialization vulnerability found: " . $match . ". автоматическое hardening is not possible. строго avoid unserialize() особенно for untrusted data. Use JSON or other safer formats.";
-            default:
-                return "// Vulnerability found: " . $title . ". Review and implement appropriate security measures for: " . $match . ".";
+        if ( ! empty( $search_term ) ) {
+            $search_term = esc_sql( $search_term );
+            $sql .= " AND scan_result_summary LIKE '%{$search_term}%'";
         }
-    }
-
-    public function update_vulnerability_database($new_data) {
-        $upload_dir = wp_upload_dir();
-        $db_path = trailingslashit($upload_dir['basedir']) . 'adversarial-code-generator/security/vulnerabilities.json';
-        
-        $current_db = $this->vulnerability_db;
-        $current_db = array_merge($current_db, $new_data);
-        
-        file_put_contents($db_path, wp_json_encode($current_db, JSON_PRETTY_PRINT));
-        $this->vulnerability_db = $current_db;
-    }
-
-    public function add_vulnerability($vulnerability_data) {
-        $upload_dir = wp_upload_dir();
-        $db_path = trailingslashit($upload_dir['basedir']) . 'adversarial-code-generator/security/vulnerabilities.json';
-        
-        $current_db = $this->vulnerability_db;
-        $current_db[] = $vulnerability_data;
-        
-        file_put_contents($db_path, wp_json_encode($current_db, JSON_PRETTY_PRINT));
-        $this->vulnerability_db = $current_db;
-    }
-
-    public function edit_vulnerability($index, $vulnerability_data) {
-        $upload_dir = wp_upload_dir();
-        $db_path = trailingslashit($upload_dir['basedir']) . 'adversarial-code-generator/security/vulnerabilities.json';
-        
-        $current_db = $this->vulnerability_db;
-        if (isset($current_db[$index])) {
-            $current_db[$index] = array_merge($current_db[$index], $vulnerability_data);
-            file_put_contents($db_path, wp_json_encode($current_db, JSON_PRETTY_PRINT));
-            $this->vulnerability_db = $current_db;
-            return true;
+        if ( ! empty( $scan_type_filter ) ) {
+            $scan_type_filter = esc_sql( $scan_type_filter );
+            $sql .= " AND scan_type = '{$scan_type_filter}'";
         }
-        return false;
+        if ( ! empty( $vulnerability_severity_filter ) ) {
+            $vulnerability_severity_filter = esc_sql( $vulnerability_severity_filter );
+            $sql .= " AND vulnerability_severity = '{$vulnerability_severity_filter}'";
+        }
+
+
+        $count = $this->db->wpdb->get_var( $sql );
+        return intval( $count );
     }
 
-    public function delete_vulnerability($index) {
-        $upload_dir = wp_upload_dir();
-        $db_path = trailingslashit($upload_dir['basedir']) . 'adversarial-code-generator/security/vulnerabilities.json';
-        
-        $current_db = $this->vulnerability_db;
-        if (isset($current_db[$index])) {
-            array_splice($current_db, $index, 1);
-            file_put_contents($db_path, wp_json_encode($current_db, JSON_PRETTY_PRINT));
-            $this->vulnerability_db = $current_db;
-            return true;
-        }
-        return false;
+    /**
+     * Registers the admin menu for Advanced Security.
+     */
+    public function register_admin_menu() {
+        add_submenu_page(
+            'adversarial-bug-fixing', // parent slug
+            'Advanced Security', // page title
+            'Advanced Security', // menu title
+            'manage_options', // capability
+            'advanced-security', // menu slug
+            [$this, 'display_advanced_security_page'] // callback function
+        );
     }
 
-    public function sanitize_input($input, $type = 'text') {
-        switch ($type) {
-            case 'email':
-                return sanitize_email($input);
-            case 'url':
-                return esc_url_raw($input);
-            case 'int':
-                return absint($input);
-            case 'textarea':
-                return sanitize_textarea_field($input);
-            case 'html':
-                return wp_kses_post($input);
-            case 'filename':
-                return sanitize_file_name($input);
-            default: // 'text'
-                return sanitize_text_field($input);
+    /**
+     * Displays the advanced security admin page.
+     */
+    public function display_advanced_security_page() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( __( 'You do not have sufficient permissions to access this page.', 'adversarial-bug-fixing' ) );
         }
+
+        $per_page = 20;
+        $page_number = isset( $_GET['paged'] ) ? absint( $_GET['paged'] ) : 1;
+        $search_term = isset( $_GET['s'] ) ? sanitize_text_field( $_GET['s'] ) : '';
+        $scan_type_filter = isset( $_GET['scan_type'] ) ? sanitize_text_field( $_GET['scan_type'] ) : '';
+        $vulnerability_severity_filter = isset( $_GET['vulnerability_severity'] ) ? sanitize_text_field( $_GET['vulnerability_severity'] ) : '';
+
+        $activity_logs = $this->get_security_scan_logs( $per_page, $page_number, $search_term, $scan_type_filter, $vulnerability_severity_filter );
+        $total_logs = $this->get_total_security_log_count( $search_term, $scan_type_filter, $vulnerability_severity_filter );
+        $total_pages = ceil( $total_logs / $per_page );
+
+        $scan_types = $this->get_distinct_scan_types();
+        $vulnerability_severities = $this->get_distinct_vulnerability_severities();
+
+        ?>
+        <div class="wrap">
+            <h2><?php _e( 'Advanced Security Logs', 'adversarial-bug-fixing' ); ?></h2>
+            <form method="get">
+                <input type="hidden" name="page" value="<?php echo esc_attr( $_GET['page'] ); ?>" />
+                <div class="tablenav top">
+                    <div class="alignleft actions">
+                        <select name="scan_type">
+                            <option value=""><?php _e( 'All Scan Types', 'adversarial-bug-fixing' ); ?></option>
+                            <?php foreach ( $scan_types as $scan_type ) : ?>
+                                <option value="<?php echo esc_attr( $scan_type->scan_type ); ?>" <?php selected( $scan_type_filter, $scan_type_filter ); ?>><?php echo esc_html( $scan_type->scan_type ); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <select name="vulnerability_severity">
+                            <option value=""><?php _e( 'All Severities', 'adversarial-bug-fixing' ); ?></option>
+                            <?php foreach ( $vulnerability_severities as $severity ) : ?>
+                                <option value="<?php echo esc_attr( $severity->vulnerability_severity ); ?>" <?php selected( $vulnerability_severity_filter, $vulnerability_severity ); ?>><?php echo esc_html( $severity->vulnerability_severity ); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <input type="submit" id="filter-submit" class="button action" value="<?php _e( 'Filter', 'adversarial-bug-fixing' ); ?>">
+                    </div>
+                    <div class="tablenav-pages">
+                        <span class="displaying-num"><?php echo esc_html( sprintf( __( '%s items', 'adversarial-bug-fixing' ), $total_logs ) ); ?></span>
+                        <?php
+                        $pagination_args = array(
+                            'base' => add_query_arg( 'paged', '%#%' ),
+                            'format' => '',
+                            'prev_text' => __( '&laquo; Previous', 'adversarial-bug-fixing' ),
+                            'next_text' => __( 'Next &raquo;', 'adversarial-bug-fixing' ),
+                            'total' => $total_pages,
+                            'current' => $page_number,
+                        );
+                        echo _wp_paginate_links( $pagination_args );
+                        ?>
+                    </div>
+                    <br class="clear">
+                </div>
+                <p class="search-box">
+                    <label class="screen-reader-text" for="post-search-input"><?php _e( 'Search Logs:', 'adversarial-bug-fixing' ); ?></label>
+                    <input type="search" id="post-search-input" name="s" value="<?php echo esc_attr( $search_term ); ?>" />
+                    <input type="submit" id="search-submit" class="button" value="<?php _e( 'Search Logs', 'adversarial-bug-fixing' ); ?>"  />
+                </p>
+                <table class="wp-list-table widefat fixed striped logs">
+                    <thead>
+                        <tr>
+                            <th><?php _e( 'ID', 'adversarial-bug-fixing' ); ?></th>
+                            <th><?php _e( 'User ID', 'adversarial-bug-fixing' ); ?></th>
+                            <th><?php _e( 'Scan Type', 'adversarial-bug-fixing' ); ?></th>
+                            <th><?php _e( 'Result Summary', 'adversarial-bug-fixing' ); ?></th>
+                            <th><?php _e( 'Severity', 'adversarial-bug-fixing' ); ?></th>
+                            <th><?php _e( 'Timestamp', 'adversarial-bug-fixing' ); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if ( $activity_logs ) : ?>
+                            <?php foreach ( $activity_logs as $log ) : ?>
+                                <tr>
+                                    <td><?php echo esc_html( $log->id ); ?></td>
+                                    <td><?php echo esc_html( $log->user_id ); ?></td>
+                                    <td><?php echo esc_html( $log->scan_type ); ?></td>
+                                    <td><?php echo esc_html( $log->scan_result_summary ); ?></td>
+                                    <td><?php echo esc_html( $log->vulnerability_severity ); ?></td>
+                                    <td><?php echo esc_html( $log->timestamp ); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else : ?>
+                            <tr>
+                                <td colspan="6"><?php _e( 'No security logs found.', 'adversarial-bug-fixing' ); ?></td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th><?php _e( 'ID', 'adversarial-bug-fixing' ); ?></th>
+                            <th><?php _e( 'User ID', 'adversarial-bug-fixing' ); ?></th>
+                            <th><?php _e( 'Scan Type', 'adversarial-bug-fixing' ); ?></th>
+                            <th><?php _e( 'Result Summary', 'adversarial-bug-fixing' ); ?></th>
+                            <th><?php _e( 'Severity', 'adversarial-bug-fixing' ); ?></th>
+                            <th><?php _e( 'Timestamp', 'adversarial-bug-fixing' ); ?></th>
+                        </tr>
+                    </tfoot>
+                </table>
+                <div class="tablenav bottom">
+                    <div class="tablenav-pages">
+                        <span class="displaying-num"><?php echo esc_html( sprintf( __( '%s items', 'adversarial-bug-fixing' ), $total_logs ) ); ?></span>
+                        <?php echo _wp_paginate_links( $pagination_args ); ?>
+                    </div>
+                    <br class="clear">
+                </div>
+            </form>
+        </div>
+        <?php
     }
+
+    /**
+     * Retrieves distinct scan types from the security log.
+     *
+     * @return array Array of distinct scan types.
+     */
+    public function get_distinct_scan_types() {
+        $table_name = $this->table_name;
+        $sql = "SELECT DISTINCT scan_type FROM $table_name";
+        $results = $this->db->wpdb->get_results( $sql );
+        return $results;
+    }
+    
+    /**
+     * Retrieves distinct vulnerability severities from the security log.
+     *
+     * @return array Array of distinct vulnerability severities.
+     */
+    public function get_distinct_vulnerability_severities() {
+        $table_name = $this->table_name;
+        $sql = "SELECT DISTINCT vulnerability_severity FROM $table_name WHERE vulnerability_severity IS NOT NULL";
+        $results = $this->db->wpdb->get_results( $sql );
+        return $results;
+    }
+
+    /**
+     * Registers admin hooks for the Advanced Security module.
+     */
+    public function register_admin_hooks() {
+        add_action( 'admin_menu', [$this, 'register_admin_menu'] );
+    }
+
+     /**
+     * Retrieves distinct scan types from the security log.
+     *
+     * @return array Array of distinct scan types.
+     */
+    public function get_distinct_scan_types() {
+        $table_name = $this->table_name;
+        $sql = "SELECT DISTINCT scan_type FROM $table_name";
+        $results = $this->db->wpdb->get_results( $sql );
+        return $results;
+    }
+    
+    /**
+     * Retrieves distinct vulnerability severities from the security log.
+     *
+     * @return array Array of distinct vulnerability severities.
+     */
+    public function get_distinct_vulnerability_severities() {
+        $table_name = $this->table_name;
+        $sql = "SELECT DISTINCT vulnerability_severity FROM $table_name WHERE vulnerability_severity IS NOT NULL";
+        $results = $this->db->wpdb->get_results( $sql );
+        return $results;
+    }
+
+
+    // Implement functions to run security scans, apply fixes, and generate security reports if needed.
 }
+new AdvancedSecurity();
+AdvancedSecurity->register_admin_hooks();

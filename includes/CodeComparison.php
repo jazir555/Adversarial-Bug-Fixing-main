@@ -1,74 +1,106 @@
 <?php
-class CodeComparison
-{
-    public function __construct()
-    {
-        add_shortcode('adversarial_code_comparison', [$this, 'render_comparison_shortcode']);
-        add_action('wp_enqueue_scripts', [$this, 'enqueue_assets']);
+/**
+ * Class CodeComparison
+ *
+ * Handles code comparison functionality for the plugin, allowing users to compare 
+ * two different versions of code snippets and view the differences.
+ */
+class CodeComparison {
+    /**
+     * @var string $version The version of the CodeComparison class.
+     */
+    private $version = '1.0';
+
+    /**
+     * Constructor for the CodeComparison class.
+     *
+     * @var Database Database instance for data operations.
+     */
+    private $db;
+
+    /**
+     * Constructor for the CodeComparison class.
+     *
+     * Initializes the Database instance, enqueues scripts and adds AJAX actions for handling code comparison requests.
+     */
+    public function __construct() {
+        $this->db = Database::get_instance();
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_scripts']);
+        add_action('wp_ajax_adversarial_compare_code', [$this, 'ajax_compare_code']);
+        add_action('wp_ajax_nopriv_adversarial_compare_code', [$this, 'ajax_compare_code']);
     }
 
-    public function enqueue_scripts()
-    {
-        wp_enqueue_script('adversarial-code-comparison', plugin_dir_url(__FILE__) . '../Assets/js/code-comparison.js', ['jquery'], '1.0', true);
+    /**
+     * Enqueue scripts for the admin area.
+     *
+     * Registers and enqueues the javascript file for code comparison functionality,
+     * including the diff2html library.
+     */
+    public function enqueue_scripts() {
+        wp_enqueue_style('adversarial-diff2html', plugins_url('assets/js/diff2html.min.css', __FILE__), [], $this->version);
+        wp_enqueue_script('adversarial-diff2html-lib', plugins_url('assets/js/diff2html-lib.js', __FILE__), [], $this->version, true);
+        wp_enqueue_script('adversarial-code-comparison', plugins_url('assets/js/code-comparison.js', __FILE__), ['jquery', 'adversarial-diff2html-lib'], $this->version, true);
+        wp_localize_script('adversarial-code-comparison', 'codeComparisonSettings', [
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('code_comparison_nonce')
+        ]);
     }
-    
-    public function enqueue_assets()
-    {
-        wp_enqueue_style('adversarial-ace-editor', plugins_url('assets/css/ace-editor.css', __FILE__));
-        wp_enqueue_style('diff2html-css', plugins_url('assets/js/diff2html.min.css', __FILE__), [], '1.0'); // Enqueue diff2html CSS
-        wp_enqueue_script('jquery'); // Ensure jQuery is enqueued
-        wp_enqueue_script('adversarial-ace-editor', plugins_url('assets/js/ace/ace.js', __FILE__), [], ADVERSARIAL_VERSION, true);
-        wp_enqueue_script('adversarial-ace-mode-python', plugins_url('assets/js/ace/mode-python.js', __FILE__), ['adversarial-ace-editor'], ADVERSARIAL_VERSION, true);
-        wp_enqueue_script('diff2html-lib', plugins_url('assets/js/diff2html-lib.js', __FILE__), [], ADVERSARIAL_VERSION, true); // Enqueue diff2html lib
-        wp_enqueue_script('adversarial-ace-mode-javascript', plugins_url('assets/js/ace/mode-javascript.js', __FILE__), ['adversarial-ace-editor'], ADVERSARIAL_VERSION, true);
-        wp_enqueue_script('adversarial-ace-mode-java', plugins_url('assets/js/ace/mode-java.js', __FILE__), ['adversarial-ace-editor'], ADVERSARIAL_VERSION, true);
-        wp_enqueue_script('adversarial-ace-mode-php', plugins_url('assets/js/ace/mode-php.js', __FILE__), ['adversarial-ace-editor'], ADVERSARIAL_VERSION, true);
-        wp_enqueue_script('adversarial-ace-theme-monokai', plugins_url('assets/js/ace/theme-monokai.js', __FILE__), ['adversarial-ace-editor'], ADVERSARIAL_VERSION, true);
-        wp_enqueue_script('adversarial-ace-theme-github', plugins_url('assets/js/ace/theme-github.js', __FILE__), ['adversarial-ace-editor'], ADVERSARIAL_VERSION, true);
-        wp_enqueue_script('adversarial-ace-theme-dracula', plugins_url('assets/js/ace/theme-dracula.js', __FILE__), ['adversarial-ace-editor'], ADVERSARIAL_VERSION, true);
-        wp_enqueue_script('adversarial-ace-theme-eclipse', plugins_url('assets/js/ace/theme-eclipse.js', __FILE__), ['adversarial-ace-editor'], ADVERSARIAL_VERSION, true);
-        wp_enqueue_script('adversarial-jshint', plugins_url('assets/js/ace/jshint.js', __FILE__), [], ADVERSARIAL_VERSION, true); // Enqueue JSHint
-        wp_enqueue_script('adversarial-ace-language-tools', plugins_url('assets/js/ace/ext-language_tools.js', __FILE__), ['adversarial-ace-editor'], ADVERSARIAL_VERSION, true); // Enqueue language_tools
-        wp_enqueue_script('adversarial-code-editor', plugins_url('assets/js/code-editor.js', __FILE__), ['adversarial-ace-editor', 'jquery', 'adversarial-jshint', 'adversarial-ace-language-tools'], '1.0', true);
+
+    /**
+     * Compares two code snippets and returns the HTML diff using diff2html.js.
+     *
+     * @param string $code1 The first code snippet for comparison.
+     * @param string $code2 The second code snippet for comparison.
+     * @return string HTML formatted diff output.
+     */
+    private function compare_code_snippets($code1, $code2) {
+        // For now, using a basic PHP diff function as diff2html is primarily a frontend library
+        return $this->generate_diff($code1, $code2);
     }
-    
-    public function render_comparison_shortcode($atts)
-    {
-        ob_start(); ?>
-        <div class="adversarial-code-comparison">
-            <div class="comparison-container">
-                <div class="comparison-pane">
-                    <h3><?php esc_html_e('Original Code', 'adversarial-code-generator'); ?></h3>
-                    <div class="code-editor-wrapper original-code" data-language="python" data-theme="monokai">
-                        <textarea class="code-editor original-code-editor"></textarea>
-                    </div>
-                </div>
-                <div class="comparison-pane modified-code">
-                    <h3><?php esc_html_e('Modified Code', 'adversarial-code-generator'); ?></h3>
-                    <div class="code-editor-wrapper modified-code" data-language="python" data-theme="monokai">
-                        <textarea class="code-editor modified-code-editor"></textarea>
-                    </div>
-                </div>
-            </div>
-            <script>
-            jQuery(document).ready(function($) {
-                var originalEditor = ace.edit($('.original-code .code-editor-container')[0]);
-                originalEditor.setTheme("ace/theme/monokai");
-                originalEditor.session.setMode("ace/mode/python");
-                var modifiedEditor = ace.edit($('.modified-code .code-editor-container')[0]);
-                modifiedEditor.setTheme("ace/theme/monokai");
-                modifiedEditor.session.setMode("ace/mode/python");
-            });
-            </script>
-            </div>
-            <div class="comparison-controls">
-                <button class="button compare-button"><?php esc_html_e('Compare Codes', 'adversarial-code-generator'); ?></button>
-            </div>
-            <div class="comparison-diff-output">
-                <!-- Diff output will be rendered here -->
-            </div>
-        </div>
-        <?php
-        return ob_get_clean();
+
+
+    private function generate_diff($code1, $code2) {
+        $lines1 = explode("\n", $code1);
+        $lines2 = explode("\n", $code2);
+        $diff = '';
+        $maxLength = max(count($lines1), count($lines2));
+        foreach ($lines1 as $k => $line) {
+            if (!isset($lines2[$k])) {
+                $diff .= "- " . $line . "\n";
+            } elseif ($line != $lines2[$k]) {
+                $diff .= "- " . $line . "\n";
+                $diff .= "+ " . $lines2[$k] . "\n";
+            } else {
+                $diff .= "  " . $line . "\n";
+            }
+        }
+         foreach (array_slice($lines2, count($lines1)) as $line) {
+            $diff .= "+ " . $line . "\n";
+        }
+        return $diff;
     }
+
+
+    /**
+     * AJAX handler for comparing code snippets.
+     *
+     * Handles the AJAX request to compare two code snippets.
+     * Retrieves code snippets and language from POST data, performs the comparison,
+     * and responds with the diff text output in JSON format.
+     */
+    public function ajax_compare_code() {
+        check_ajax_referer('code_comparison_nonce', 'nonce');
+        if (!isset($_POST['code1'], $_POST['code2'])) {
+            wp_send_json_error(['message' => 'Missing code snippets for comparison']);
+        }
+        $code1 = stripslashes($_POST['code1']);
+        $code2 = stripslashes($_POST['code2']);
+
+        $diff_output = $this->compare_code_snippets($code1, $code2);
+
+        wp_send_json_success(['diff_text' => $diff_output]);
+    }
+
+    // Implement functions to enhance code comparison using diff2html.js on the frontend for richer UI.
 }
+new CodeComparison();

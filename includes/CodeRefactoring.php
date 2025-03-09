@@ -1,235 +1,145 @@
 <?php
-require_once plugin_dir_path(__FILE__) . 'CodeRefactoringDatabase.php';
-require_once plugin_dir_path(__FILE__) . 'LLMHandler.php';
+/**
+ * Class CodeRefactoring
+ *
+ * Handles code refactoring functionalities for the plugin, providing tools to improve 
+ * code quality, readability, and maintainability.
+ */
+class CodeRefactoring {
+    /**
+     * @var string $version The version of the CodeRefactoring class.
+     */
+    private $version = '1.0';
 
-class CodeRefactoring
-{
+    /**
+     * @var Database Database instance for data operations.
+     */
     private $db;
-    private $llm_handler;
-    const CRON_HOOK = 'adversarial_code_refactoring_queue_hook';
+    /**
+     * @var CodeRefactoringDatabase $db_handler Database handler for code refactoring logs.
+     */
+    private $db_handler;
 
-    public function __construct()
-    {
-        $this->db = CodeRefactoringDatabase::get_instance();
-        $this->llm_handler = new LLMHandler();
+    /**
+     * Constructor for the CodeRefactoring class.
+     *
+     * Initializes the Database instance and database handler.
+     */
+    public function __construct() {
+        $this->db = Database::get_instance();
+        $this->db_handler = new CodeRefactoringDatabase();
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_scripts']);
+        add_action('wp_ajax_adversarial_refactor_code', [$this, 'ajax_refactor_code']);
+        add_action('wp_ajax_nopriv_adversarial_refactor_code', [$this, 'ajax_refactor_code']);
     }
 
-    public static function activate()
-    {
-        if (! wp_next_scheduled(self::CRON_HOOK)) {
-            wp_schedule_event(time(), 'hourly', self::CRON_HOOK);
+    /**
+     * Enqueue scripts for the admin area.
+     *
+     * Registers and enqueues the javascript file for code refactoring functionality.
+     */
+    public function enqueue_scripts() {
+        wp_enqueue_script('adversarial-code-refactoring', plugins_url('assets/js/code-refactoring.js', __FILE__), ['jquery'], $this->version, true);
+        wp_localize_script('adversarial-code-refactoring', 'codeRefactoringSettings', [
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('code_refactoring_nonce')
+        ]);
+    }
+
+    /**
+     * Dispatches code refactoring requests to the appropriate handler based on refactoring type and language.
+     *
+     * @param string $code The code to be refactored.
+     * @param string $language The programming language of the code.
+     * @param string $refactoring_type The type of refactoring to perform (e.g., 'rename_variable', 'extract_function').
+     * @param array $options Array of options for the refactoring process.
+     * @return string|WP_Error Returns the refactored code on success, or WP_Error on failure.
+     */
+    public function refactor_code($code, $language, $refactoring_type, $options = []) {
+        switch ($refactoring_type) {
+            case 'rename_variable':
+                return $this->refactor_variable_renaming($code, $language, $options);
+            case 'extract_function':
+                return $this->refactor_function_extraction($code, $language, $options);
+            case 'format_code':
+                return $this->refactor_code_formatting($code, $language, $options);
+            default:
+                return new WP_Error('invalid_refactoring_type', 'Unsupported refactoring type.');
         }
     }
 
-    public static function deactivate()
-    {
-        wp_clear_scheduled_hook(self::CRON_HOOK);
-    }
-
-    public function install()
-    {
-        $this->db->install();
-    }
-
-    public function refactor_code($code, $language, $goal)
-    {
-        if (empty($code) || trim($code) === '' || empty($language) || trim($language) === '' || empty($goal) || trim($goal) === '') {
-            return ['error' => 'Code, language, and goal are required and cannot be empty.'];
+    /**
+     * AJAX handler for code refactoring requests.
+     *
+     * Handles the AJAX request to refactor code.
+     * Retrieves code, language, refactoring type, and options from POST data, 
+     * performs the refactoring, and responds with the refactored code or an error message in JSON format.
+     */
+    public function ajax_refactor_code() {
+        check_ajax_referer('code_refactoring_nonce', 'nonce');
+        if (!isset($_POST['code'], $_POST['language'], $_POST['refactoring_type'])) {
+            wp_send_json_error(['message' => 'Missing parameters for code refactoring.']);
         }
 
-        $entry_id = $this->db->create_entry(
-            [
-            'code' => $code,
-            'code' => sanitize_textarea_field($code),
-            'language' => sanitize_text_field($language),
-            'goal' => sanitize_textarea_field($goal),
-            'status' => 'pending'
-            ]
-        );
+        $code = stripslashes($_POST['code']);
+        $language = sanitize_key($_POST['language']);
+        $refactoring_type = sanitize_key($_POST['refactoring_type']);
+        $options = isset($_POST['options']) ? $_POST['options'] : [];
 
-        return ['request_id' => $entry_id];
-    }
+        $refactored_code = $this->refactor_code($code, $language, $refactoring_type, $options);
 
-    public function get_refactoring_request($entry_id)
-    {
-        $request = $this->db->get_entry($entry_id);
-        if (!$request) {
-            return ['error' => 'Refactoring request not found.'];
-        }
-        return $request;
-    }
-
-    public function get_refactoring_requests($status = null, $limit = 20)
-    {
-        return $this->db->get_entries($status, $limit);
-    }
-
-    public function enqueue_refactoring($code, $language, $goal)
-    {
-        return $this->refactor_code($code, $language, $goal);
-    }
-
-    
-    public function process_refactoring_queue()
-    {
-        try {
-            $pending_requests = $this->db->get_entries('pending', 10);
-        } catch (Exception $e) {
-            $error_message = "Database error fetching pending refactoring requests: " . $e->getMessage();
-            $this->log_error($error_message);
-            return; 
-        }
-
-        if (empty($pending_requests)) {
-            $this->log_info("Code Refactoring Queue: No pending requests.");
-            return;
-        }
-
-        $this->log_info("Code Refactoring Queue: Processing " . count($pending_requests) . " requests.");
-
-        foreach ($pending_requests as $request) {
-            try {
-                $this->process_single_refactoring($request);
-            } catch (Exception $e) {
-                $error_message = "Error processing refactoring request ID: {$request->id}. Error: " . $e->getMessage();
-                $this->log_error($error_message);
-                $this->db->update_entry(
-                    $request->id,
-                    [
-                        'status' => 'error',
-                        'error' => $error_message,
-                        'completed_at' => current_time('mysql'),
-                        'full_error_details' => json_encode(
-                            [
-                            'error' => $error_message,
-                            'exception_message' => $e->getMessage(),
-                            'exception_trace' => $e->getTraceAsString(),
-                            ]
-                        )
-                    ]
-                );
-            }
-        }
-
-        $processed_count = count($pending_requests);
-        $completion_message = "Code Refactoring Queue: Completed processing of {$processed_count} requests.";
-        $this->log_info($completion_message);
-    }
-
-    private function log_info($message)
-    {
-        if (class_exists('Logger')) {
-            $logger = new Logger();
-            $logger->log_info($message);
+        if (is_wp_error($refactored_code)) {
+            wp_send_json_error(['message' => $refactored_code->get_error_message()]);
         } else {
-            error_log("Adversarial Bug Fixing - " . $message);
+            wp_send_json_success(['refactored_code' => $refactored_code]);
         }
     }
 
-    private function log_error($message)
-    {
-        if (class_exists('Logger')) {
-            $logger = new Logger();
-            $logger->log_error($message);
+    /**
+     * Refactors code by renaming variables (Placeholder).
+     *
+     * @param string $code The code to be refactored.
+     * @param string $language The programming language of the code.
+     * @param array $options Array of options for variable renaming.
+     * @return string|WP_Error Returns the refactored code on success, or WP_Error on failure.
+     * @todo Implement actual variable renaming logic.
+     */
+    private function refactor_variable_renaming($code, $language, $options) {
+        return new WP_Error('not_implemented', 'Variable renaming refactoring not yet implemented.');
+    }
+
+    /**
+     * Refactors code by extracting functions (Placeholder).
+     *
+     * @param string $code The code to be refactored.
+     * @param string $language The programming language of the code.
+     * @param array $options Array of options for function extraction.
+     * @return string|WP_Error Returns the refactored code on success, or WP_Error on failure.
+     * @todo Implement actual function extraction logic.
+     */
+    private function refactor_function_extraction($code, $language, $options) {
+        return new WP_Error('not_implemented', 'Function extraction refactoring not yet implemented.');
+    }
+
+    /**
+     * Refactors code by formatting code (Placeholder).
+     *
+     * @param string $code The code to be refactored.
+     * @param string $language The programming language of the code.
+     * @param array $options Array of options for code formatting.
+     * @return string|WP_Error Returns the refactored code on success, or WP_Error on failure.
+     * @todo Implement actual code formatting logic or reuse existing formatting functionality.
+     */
+    private function refactor_code_formatting($code, $language, $options) {
+        $code_editor = new CodeEditor();
+        $formatted_code = $code_editor->format_code($code, $language);
+        if ($formatted_code) {
+            return $formatted_code;
         } else {
-            error_log("Adversarial Bug Fixing - " . $message);
+            return new WP_Error('formatting_failed', 'Code formatting failed.');
         }
     }
 
-    public function scheduled_process_refactoring_queue()
-    {
-        $this->log_info("WP Cron triggered code refactoring queue processing.");
-        $this->process_refactoring_queue();
-    }
-
-    public function process_refactoring_queue_callback()
-    {
-        $this->process_refactoring_queue();
-    }
-
-    private function process_single_refactoring($request)
-    {
-        $entry_id = $request->id;
-        $code = $request->code;
-        $language = $request->language;
-        $goal = $request->goal;
-
-        $current_request = $this->get_refactoring_request($entry_id);
-        if ($current_request && $current_request->status !== 'pending') {
-            return;
-        }
-
-        if ($request->status !== 'pending') {
-            return;
-        }
-
-        $prompt = "Refactor the following " . $language . " code to achieve the following goal: " . $goal . "\n\n" . $code;
-
-        $llm_response = $this->llm_handler->call_llm_api($this->llm_handler->select_model('refactoring'), $prompt, 'refactor_code', $language);
-
-        if (isset($llm_response['refactored_code'])) {
-            $refactored_code = $llm_response['refactored_code'];
-            if (empty($refactored_code)) {
-                $error_message = 'Refactored code was empty from LLM response.';
-                $this->handle_refactoring_error($entry_id, $error_message, $code, $language, $goal, $llm_response);
-                return;
-            }
-
-            $validated_code = $this->validate_refactored_code($refactored_code, $language);
-            $sanitized_refactored_code = wp_kses_post($validated_code);
-
-            $this->db->update_entry(
-                $entry_id, [
-                'refactored_code' => $sanitized_refactored_code,
-                'status' => 'completed',
-                'completed_at' => current_time('mysql')
-                ]
-            );
-        } else {
-            $error_message = isset($llm_response['error']) ? $llm_response['error'] : 'Unknown error during code refactoring.';
-            $this->handle_refactoring_error($entry_id, $error_message, $code, $language, $goal, $llm_response);
-        }
-    }
-
-    private function handle_refactoring_error($entry_id, $error_message, $code, $language, $goal, $llm_response)
-    {
-        $sanitized_error_message = sanitize_text_field($error_message);
-        $full_error_details = [
-            'error' => $sanitized_error_message,
-            'llm_response' => $llm_response,
-            'request_details' => ['code' => $code, 'language' => $language, 'goal' => $goal]
-        ];
-        $log_message = "Code Refactoring Error ID: {$entry_id}, Error: {$sanitized_error_message}, Details: " . json_encode($full_error_details);
-
-        if (class_exists('Logger')) {
-            $logger = new Logger();
-            $logger->log_error($log_message);
-        } else {
-            error_log($log_message);
-        }
-
-        $this->db->update_entry(
-            $entry_id, [
-            'status' => 'error',
-            'error' => $sanitized_error_message,
-            'completed_at' => current_time('mysql'),
-            'full_error_details' => json_encode($full_error_details)
-            ]
-        );
-    }
-
-    private function validate_refactored_code($code, $language)
-    {
-        if (empty(trim($code))) {
-            throw new Exception('Refactored code is empty after processing.');
-        }
-        if (strlen(trim($code)) < 10) {
-            throw new Exception('Refactored code is too short or contains only minimal content.');
-        }
-        return $code;
-    }
+    // Implement specific refactoring methods for different languages and refactoring types.
 }
-
-add_action(CodeRefactoring::CRON_HOOK, ['CodeRefactoring', 'scheduled_process_refactoring_queue']);
-register_activation_hook(__FILE__, ['CodeRefactoring', 'activate']);
-register_deactivation_hook(__FILE__, ['CodeRefactoring', 'deactivate']);
+new CodeRefactoring();

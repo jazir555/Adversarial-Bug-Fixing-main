@@ -1,89 +1,210 @@
+<?php
+/**
+ * Class CodeAnalysis
+ *
+ * Handles code analysis functionality for the plugin, including syntax checking and security analysis.
+ */
 class CodeAnalysis {
-    public function analyze_code_quality($code, $language) {
-        $temp_file = tempnam(sys_get_temp_dir(), 'code_analysis_');
-        file_put_contents($temp_file, $code);
+    /**
+     * @var string $table_name The name of the database table for storing analysis results.
+     */
+    private $table_name;
 
-        $metrics_output = '';
-        $metrics_error = '';
+    /**
+     * @var string $version The version of the CodeAnalysis class.
+     */
+    private $version = '1.0';
 
-        $command = "vendor/bin/phpmetrics --report-json=" . escapeshellarg("{$temp_file}.json") . " " . escapeshellarg($temp_file);
+    /**
+     * @var Database Database instance for data operations.
+     */
+    private $db;
 
-        try {
-            $metrics_result = $this->execute_command($command);
-            $metrics_output = $metrics_result['stdout'];
-            $metrics_error = $metrics_result['stderr'];
+    /**
+     * Constructor for the CodeAnalysis class.
+     *
+     * Initializes the Database instance and sets up the database table name and actions.
+     */
+    public function __construct() {
+        $this->db = Database::get_instance();
+        $this->table_name = $this->db->get_table_name('adversarial_code_analysis');
+        register_activation_hook(__FILE__, [$this, 'install']);
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_scripts']);
+        add_action('wp_ajax_adversarial_run_analysis', [$this, 'ajax_run_analysis']);
+        add_action('wp_ajax_nopriv_adversarial_run_analysis', [$this, 'ajax_run_analysis']);
+        add_action('wp_ajax_adversarial_get_analysis_report', [$this, 'ajax_get_report']);
+        add_action('wp_ajax_nopriv_adversarial_get_analysis_report', [$this, 'ajax_get_report']);
+    }
 
-            if (file_exists("{$temp_file}.json")) {
-                $metrics_data = json_decode(file_get_contents("{$temp_file}.json"), true);
-                $metrics_output = $this->format_metrics_output($metrics_data);
-                unlink("{$temp_file}.json"); // Delete metrics json report
+    /**
+     * Installation function for the CodeAnalysis module.
+     *
+     * Creates the database table to store code analysis results using Database class.
+     */
+    public function install() {
+        $table_name = $this->table_name;
+        $charset_collate = $this->db->wpdb->get_charset_collate();
+        $sql = "CREATE TABLE $table_name (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id BIGINT UNSIGNED NOT NULL,
+            code_snippet_id BIGINT UNSIGNED NOT NULL,
+            analysis_type VARCHAR(50) NOT NULL,
+            result LONGTEXT NOT NULL,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY user_id (user_id),
+            KEY code_snippet_id (code_snippet_id)
+        ) $charset_collate;";
+        $this->db->install_table($table_name, $sql);
+    }
+
+    public function enqueue_scripts() {
+        wp_enqueue_script('adversarial-code-analysis', plugins_url('assets/js/analysis.js', __FILE__), ['jquery'], $this->version, true);
+        wp_localize_script('adversarial-code-analysis', 'analysisSettings', [
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('analysis_nonce')
+        ]);
+    }
+
+    /**
+     * AJAX handler for running code analysis.
+     *
+     * Retrieves code, language, and analysis type from POST data, performs the analysis,
+     * and stores the results in the database using Database class. Responds with success or error in JSON format.
+     */
+    public function ajax_run_analysis() {
+        check_ajax_referer('analysis_nonce', 'nonce');
+        if (!isset($_POST['code'], $_POST['language'], $_POST['analysis_type'])) {
+            wp_send_json_error(['message' => 'Missing parameters']);
+        }
+        $code = stripslashes($_POST['code']);
+        $language = sanitize_key($_POST['language']);
+        $analysis_type = sanitize_key($_POST['analysis_type']);
+        $result = $this->perform_analysis($code, $language, $analysis_type);
+        if (is_wp_error($result)) {
+            wp_send_json_error(['message' => $result->get_error_message()]);
+        }
+        $this->db->insert(
+            $this->table_name,
+            [
+                'user_id' => get_current_user_id(),
+                'code_snippet_id' => isset($_POST['snippet_id']) ? intval($_POST['snippet_id']) : 0,
+                'analysis_type' => $analysis_type,
+                'result' => maybe_serialize($result)
+            ],
+            [
+                '%d',
+                '%d',
+                '%s',
+                '%s'
+            ]
+        );
+        wp_send_json_success(['analysis_id' => $this->db->wpdb->insert_id]);
+    }
+
+    /**
+     * AJAX handler for getting a code analysis report.
+     *
+     * Retrieves the analysis report from the database based on the provided analysis ID using Database class.
+     * Responds with the report details or an error message in JSON format.
+     */
+    public function ajax_get_report() {
+        check_ajax_referer('analysis_nonce', 'nonce');
+        if (!isset($_POST['analysis_id'])) {
+            wp_send_json_error(['message' => 'Missing analysis ID']);
+        }
+        $analysis_id = intval($_POST['analysis_id']);
+        $report = $this->db->get_row(
+            $this->table_name,
+            $this->db->wpdb->prepare(
+                "SELECT result, analysis_type, timestamp FROM $this->table_name WHERE id = %d AND user_id = %d",
+                $analysis_id,
+                get_current_user_id()
+            ),
+        );
+        if ($report) {
+            wp_send_json_success([
+                'report' => maybe_unserialize($report->result),
+                'analysis_type' => $report->analysis_type,
+                'timestamp' => $report->timestamp
+            ]);
+        } else {
+            wp_send_json_error(['message' => 'Report not found']);
+        }
+    }
+
+    /**
+     * Performs code analysis based on the language and analysis type.
+     *
+     * @param string $code The code to be analyzed.
+     * @param string $language The programming language of the code.
+     * @param string $type The type of analysis to perform (e.g., 'syntax', 'security', 'lint').
+     * @return array|WP_Error Returns the analysis result as an array on success, or WP_Error on failure.
+     */
+    private function perform_analysis($code, $language, $type) {
+        if ($language === 'php') {
+            if ($type === 'syntax') {
+                return $this->php_syntax_check($code);
+            } elseif ($type === 'security') {
+                return $this->php_security_analysis($code);
             }
-
-        } catch (Exception $e) {
-            $metrics_error = "Error running phpmetrics: " . $e->getMessage();
-            $metrics_output = "Code metrics analysis failed.";
-            error_log("CodeAnalysis: phpmetrics error - " . $metrics_error);
+        } elseif ($language === 'javascript') {
+            if ($type === 'lint') {
+                return $this->javascript_lint($code);
+            }
         }
-
-
-        $prompt = "Perform a comprehensive quality analysis of the following " . $language . " code:\n\n" . $code . 
-                  "\n\nCode Metrics:\n" . $metrics_output .
-                  "\n\nErrors from metrics tool:\n" . $metrics_error . 
-                  "\n\nEvaluate code readability, maintainability, adherence to best practices, and potential improvements.";
-        
-        $llm_handler = new LLMHandler();
-        $llm_response = $llm_handler->call_llm_api($llm_handler->select_model('analysis'), $prompt, 'analyze_code', $language);
-
-        unlink($temp_file); // Delete temp file
-        return $llm_response;
+        return new WP_Error('invalid_type', 'Unsupported analysis type for this language');
     }
 
-    private function execute_command($command) {
-        $descriptors = [
-            0 => ['pipe', 'r'], // stdin
-            1 => ['pipe', 'w'], // stdout
-            2 => ['pipe', 'w']  // stderr
-        ];
-        
-        $process = proc_open($command, $descriptors, $pipes, null, null);
-        
-        if (!is_resource($process)) {
-            throw new Exception("Failed to execute command: $command");
+    /**
+     * Performs PHP syntax check using the PHP `lint` command.
+     *
+     * @param string $code The PHP code to check.
+     * @return array Returns the syntax check result as an array.
+     */
+    private function php_syntax_check($code) {
+        $temp_file = tempnam(sys_get_temp_dir(), 'php_analysis_');
+        file_put_contents($temp_file, $code);
+        $output = shell_exec("php -l $temp_file 2>&1");
+        unlink($temp_file);
+        if (strpos($output, 'No syntax errors detected') !== false) {
+            return ['status' => 'success', 'message' => 'No syntax errors'];
         }
-        
-        fclose($pipes[0]); // Close stdin
-        $stdout = stream_get_contents($pipes[1]);
-        fclose($pipes[1]); // Close stdout
-        $stderr = stream_get_contents($pipes[2]);
-        fclose($pipes[2]); // Close stderr
-        
-        $return_value = proc_close($process);
-        
-        if ($return_value !== 0) {
-            throw new Exception("Command failed with exit code $return_value: $command\\nSTDERR: $stderr\\nSTDOUT: $stdout");
-        }
-        
-        return ['stdout' => $stdout, 'stderr' => $stderr, 'code' => $return_value];
+        return ['status' => 'error', 'message' => $output];
     }
 
-    private function format_metrics_output($metrics_data) {
-        if (empty($metrics_data) || !is_array($metrics_data)) {
-            return "No metrics data available or invalid format.";
+    /**
+     * Performs basic PHP security analysis (Placeholder).
+     *
+     * @param string $code The PHP code to analyze for security vulnerabilities.
+     * @return array Returns the security analysis result as an array.
+     * @todo Implement actual PHP security analysis using tools like RIPS or PHPStan.
+     */
+    private function php_security_analysis($code) {
+        // Placeholder for security checks (e.g., SQLi, XSS)
+        // This should be replaced with actual security analysis tools for comprehensive checks.
+        return ['status' => 'success', 'message' => 'Security analysis not yet implemented'];
+    }
+
+    /**
+     * Performs JavaScript linting using JSHint.
+     *
+     * @param string $code The JavaScript code to lint.
+     * @return array Returns the JavaScript linting result as an array.
+     */
+    private function javascript_lint($code) {
+        $jshint_path = plugin_dir_path(__FILE__) . 'assets/js/jshint/jshint.js';
+        if (!file_exists($jshint_path) || !function_exists('shell_exec')) {
+            return new WP_Error('jshint_not_available', 'JSHint is not available or JSHint path not configured.');
         }
-
-        $formatted_output = "Code Metrics Summary:\n";
-        $formatted_output .= "-------------------------\n";
-
-        // Example metrics - customize based on phpmetrics output
-        $formatted_output .= "Lines of Code (LOC): " . ($metrics_data['loc'] ?? 'N/A') . "\n";
-        $formatted_output .= "Cyclomatic Complexity (CCN): " . ($metrics_data['ccn'] ?? 'N/A') . "\n";
-        $formatted_output .= " количество классов: " . ($metrics_data[' количество классов'] ?? 'N/A') . "\n";
-        $formatted_output .= " количество методов: " . ($metrics_data[' количество методов'] ?? 'N/A') . "\n";
-        // Add more metrics as needed
-
-        $formatted_output .= "-------------------------\n";
-        $formatted_output .= "For detailed metrics, refer to the phpmetrics JSON report.\n";
-
-        return $formatted_output;
+        $temp_file = tempnam(sys_get_temp_dir(), 'js_lint_');
+        file_put_contents($temp_file, $code);
+        $cmd = 'node ' . escapeshellarg($jshint_path) . ' ' . escapeshellarg($temp_file) . ' 2>&1';
+        unlink($temp_file);
+        if (empty(trim($output))) {
+            return ['status' => 'success', 'message' => 'No lint errors found'];
+        }
+        return ['status' => 'error', 'message' => $output];
     }
 }
+new CodeAnalysis();

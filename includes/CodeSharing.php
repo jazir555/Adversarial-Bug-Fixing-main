@@ -1,82 +1,95 @@
+<?php
+/**
+ * Class CodeSharing
+ *
+ * Handles code sharing functionalities for the plugin, allowing users to share 
+ * code snippets with others via unique links or access keys.
+ */
 class CodeSharing {
-    private $shares_dir;
-    
+    /**
+     * @var string $table_name The name of the database table for storing code sharing data.
+     */
+    private $table_name;
+
+    /**
+     * @var string $version The version of the CodeSharing class.
+     */
+    private $version = '1.0';
+
+    /**
+     * Constructor for the CodeSharing class.
+     *
+     * Sets up the database table name and registers activation hook for database table creation.
+     */
     public function __construct() {
-        $upload_dir = wp_upload_dir();
-        $this->shares_dir = trailingslashit($upload_dir['basedir']) . 'adversarial-code-generator/shares';
-        wp_mkdir_p($this->shares_dir);
-        
-        add_shortcode('adversarial_code_sharing', [$this, 'code_sharing_shortcode']);
+        global $wpdb;
+        $this->table_name = $wpdb->prefix . 'adversarial_code_sharing';
+        register_activation_hook(__FILE__, [$this, 'install']);
     }
 
-    public function share_code($code_id, $email) {
-        // Implement sharing logic
-        // This is a simplified version - in a real implementation, you would:
-        // 1. Generate a unique share ID
-        // 2. Store the share information
-        // 3. Send an email with a share link
-        // 4. Return the share ID
-        
-        $share_id = uniqid('share_');
-        $share_data = [
-            'code_id' => $code_id,
-            'email' => $email,
-            'date' => current_time('mysql')
-        ];
-        
-        file_put_contents($this->shares_dir . "/{$share_id}.json", wp_json_encode($share_data));
-        
-        return $share_id;
+    /**
+     * Installation function for the CodeSharing module.
+     *
+     * Creates the database table to store code sharing data.
+     * @global wpdb $wpdb WordPress database abstraction object.
+     */
+    public function install() {
+        global $wpdb;
+        $charset_collate = $wpdb->get_charset_collate();
+        $sql = "CREATE TABLE $this->table_name (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            code_snippet_id BIGINT UNSIGNED NOT NULL,
+            sharing_user_id BIGINT UNSIGNED NOT NULL,
+            access_key VARCHAR(255) NOT NULL UNIQUE,
+            expiry_date TIMESTAMP NULL,
+            access_permissions VARCHAR(50) NOT NULL DEFAULT 'read',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY code_snippet_id (code_snippet_id),
+            KEY sharing_user_id (sharing_user_id),
+            KEY access_key (access_key)
+        ) $charset_collate;";
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        dbDelta($sql);
     }
 
-    public function get_shared_code($share_id) {
-        $file = $this->shares_dir . "/{$share_id}.json";
-        if (!file_exists($file)) {
-            return null;
+    /**
+     * Shares a code snippet and generates a unique access key.
+     *
+     * @param int $code_snippet_id The ID of the code snippet to share.
+     * @param int $sharing_user_id The ID of the user sharing the code snippet.
+     * @param string|null $expiry_date Optional expiry date for the share link.
+     * @param string $access_permissions Access permissions for the shared code snippet ('read', 'edit', etc.).
+     * @return string|WP_Error Returns the unique access key on success, or WP_Error on failure.
+     */
+    public function share_code_snippet($code_snippet_id, $sharing_user_id, $expiry_date = null, $access_permissions = 'read') {
+        $access_key = wp_generate_password(32, false); // Generate a unique access key
+        global $wpdb;
+        $result = $wpdb->insert(
+            $this->table_name,
+            [
+                'code_snippet_id' => intval($code_snippet_id),
+                'sharing_user_id' => intval($sharing_user_id),
+                'access_key' => $access_key,
+                'expiry_date' => $expiry_date,
+                'access_permissions' => sanitize_key($access_permissions),
+            ],
+            [
+                '%d',
+                '%d',
+                '%s',
+                '%s',
+                '%s'
+            ]
+        );
+
+        if ($result) {
+            return $access_key;
+        } else {
+            return new WP_Error('db_insert_error', 'Failed to share code snippet.', $wpdb->last_error);
         }
-        
-        return json_decode(file_get_contents($file), true);
     }
 
-    public function code_sharing_shortcode($atts) {
-        $atts = shortcode_atts([
-            'code_id' => 0
-        ], $atts);
-        
-        if (!$atts['code_id']) {
-            return '<p>' . esc_html__('Invalid code ID', 'adversarial-code-generator') . '</p>';
-        }
-        
-        ob_start(); ?>
-        <div class="adversarial-code-sharing">
-            <h3><?php esc_html_e('Share Code', 'adversarial-code-generator'); ?></h3>
-            <form method="post" class="share-form">
-                <?php wp_nonce_field('adversarial_share_code', 'adversarial_nonce'); ?>
-                <input type="hidden" name="code_id" value="<?php echo esc_attr($atts['code_id']); ?>">
-                <div class="form-group">
-                    <label for="share_email"><?php esc_html_e('Recipient Email:', 'adversarial-code-generator'); ?></label>
-                    <input type="email" id="share_email" name="share_email" class="regular-text" required>
-                </div>
-                <button type="submit" class="button button-primary"><?php esc_html_e('Share Code', 'adversarial-code-generator'); ?></button>
-            </form>
-            
-            <?php
-            if (isset($_POST['share_email']) && wp_verify_nonce($_POST['adversarial_nonce'], 'adversarial_share_code')) {
-                try {
-                    $code_id = sanitize_text_field($_POST['code_id']);
-                    $email = sanitize_email($_POST['share_email']);
-                    
-                    $share_id = $this->share_code($code_id, $email);
-                    
-                    echo '<div class="notice notice-success"><p>' . esc_html__('Code shared successfully!', 'adversarial-code-generator') . '</p></div>';
-                    echo '<p>' . esc_html__('Share ID: ', 'adversarial-code-generator') . esc_html($share_id) . '</p>';
-                } catch (Exception $e) {
-                    echo '<div class="notice notice-error"><p>' . esc_html__('Sharing failed: ', 'adversarial-code-generator') . esc_html($e->getMessage()) . '</p></div>';
-                }
-            }
-            ?>
-        </div>
-        <?php
-        return ob_get_clean();
-        }
-        }
+    // Implement functions to get, update, delete, and list shared code snippets.
+}
+new CodeSharing();

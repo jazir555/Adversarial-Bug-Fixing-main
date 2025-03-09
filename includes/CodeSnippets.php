@@ -1,144 +1,223 @@
+<?php
+/**
+ * Class CodeSnippets
+ *
+ * Handles code snippets functionalities for the plugin, allowing users to create, 
+ * manage, and reuse code snippets within the code editor.
+ */
 class CodeSnippets {
-    private $snippets_dir;
-    
+    /**
+     * @var string $table_name The name of the database table for storing code snippets.
+     */
+    private $table_name;
+
+    /**
+     * @var string $version The version of the CodeSnippets class.
+     */
+    private $version = '1.0';
+
+    /**
+     * Constructor for the CodeSnippets class.
+     *
+     * Sets up the database table name and registers activation hook for database table creation.
+     */
     public function __construct() {
-        $upload_dir = wp_upload_dir();
-        $this->snippets_dir = trailingslashit($upload_dir['basedir']) . 'adversarial-code-generator/snippets';
-        wp_mkdir_p($this->snippets_dir);
-        
-        add_action('wp_enqueue_scripts', [$this, 'enqueue_scripts']);
-        add_shortcode('adversarial_code_snippets', [$this, 'code_snippets_shortcode']);
+        global $wpdb;
+        $this->table_name = $wpdb->prefix . 'adversarial_code_snippets_v2'; // Using v2 to avoid table name conflict with CodeEditor table
+        register_activation_hook(__FILE__, [$this, 'install']);
     }
 
-    public function enqueue_scripts() {
-        wp_enqueue_script('adversarial-code-snippets', plugin_dir_url(__FILE__) . '../Assets/js/code-snippets.js', ['jquery', 'adversarial-code-editor'], '1.0', true);
+    /**
+     * Installation function for the CodeSnippets module.
+     *
+     * Creates the database table to store code snippets.
+     * @global wpdb $wpdb WordPress database abstraction object.
+     */
+    public function install() {
+        global $wpdb;
+        $charset_collate = $wpdb->get_charset_collate();
+        $sql = "CREATE TABLE $this->table_name (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id BIGINT UNSIGNED NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            code LONGTEXT NOT NULL,
+            language VARCHAR(50) NOT NULL DEFAULT 'python',
+            description TEXT NULL,
+            tags TEXT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY user_id (user_id),
+            KEY language (language),
+            FULLTEXT KEY code_content_fulltext (code, description, tags) 
+        ) $charset_collate;";
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        dbDelta($sql);
     }
 
-    public function save_snippet($title, $code, $language, $tags = []) {
-        $snippet = [
-            'title' => $title,
-            'code' => $code,
-            'language' => $language,
-            'tags' => $tags,
-            'date' => current_time('mysql'),
-            'user_id' => get_current_user_id()
-        ];
-        
-        $filename = $this->snippets_dir . '/' . uniqid('snippet_') . '.json';
-        file_put_contents($filename, wp_json_encode($snippet));
-        
-        return basename($filename);
+    /**
+     * Creates a new code snippet.
+     *
+     * @param array $snippet_data Array of code snippet data (name, code, language, description, tags, user_id).
+     * @return int|WP_Error Returns the ID of the newly created code snippet on success, or WP_Error on failure.
+     */
+    public function create_code_snippet($snippet_data) {
+        global $wpdb;
+        $result = $wpdb->insert(
+            $this->table_name,
+            [
+                'user_id' => intval($snippet_data['user_id']),
+                'name' => sanitize_text_field($snippet_data['name']),
+                'code' => wp_kses_post($snippet_data['code']),
+                'language' => sanitize_key($snippet_data['language']),
+                'description' => sanitize_textarea_field($snippet_data['description']),
+                'tags' => sanitize_text_field($snippet_data['tags']),
+            ],
+            [
+                '%d',
+                '%s',
+                '%s',
+                '%s',
+                '%s',
+                '%s'
+            ]
+        );
+
+        if ($result) {
+            return $wpdb->insert_id;
+        } else {
+            return new WP_Error('db_insert_error', 'Failed to create code snippet.', $wpdb->last_error);
+        }
     }
 
-    public function get_snippets($tags = [], $limit = 20) {
-        $snippets = [];
-        $snippet_files = glob($this->snippets_dir . '/*.json');
-        
-        usort($snippet_files, function($a, $b) {
-            return filemtime($b) - filemtime($a);
-        });
-        
-        foreach (array_slice($snippet_files, 0, $limit) as $file) {
-            $content = json_decode(file_get_contents($file), true);
-            if (empty($tags) || count(array_intersect($content['tags'], $tags)) > 0) {
-                $snippets[] = $content + ['id' => basename($file)];
-            }
+    /**
+     * Retrieves a code snippet by ID.
+     *
+     * @param int $snippet_id The ID of the code snippet to retrieve.
+     * @return array|null Returns the code snippet data array on success, or null if not found.
+     */
+    public function get_code_snippet($snippet_id) {
+        global $wpdb;
+        return $wpdb->get_row(
+            $wpdb->prepare("SELECT * FROM $this->table_name WHERE id = %d", $snippet_id),
+            ARRAY_A
+        );
+    }
+
+    /**
+     * Updates an existing code snippet.
+     *
+     * @param int $snippet_id The ID of the code snippet to update.
+     * @param array $snippet_data Array of code snippet data to update (name, code, language, description, tags).
+     * @return bool|WP_Error Returns true on success, or WP_Error on failure.
+     */
+    public function update_code_snippet($snippet_id, $snippet_data) {
+        global $wpdb;
+        $update_data = [];
+        $format = [];
+        if (isset($snippet_data['name'])) {
+            $update_data['name'] = sanitize_text_field($snippet_data['name']);
+            $format[] = '%s';
+        }
+        if (isset($snippet_data['code'])) {
+            $update_data['code'] = wp_kses_post($snippet_data['code']);
+            $format[] = '%s';
+        }
+        if (isset($snippet_data['language'])) {
+            $update_data['language'] = sanitize_key($snippet_data['language']);
+            $format[] = '%s';
+        }
+        if (isset($snippet_data['description'])) {
+            $update_data['description'] = sanitize_textarea_field($snippet_data['description']);
+            $format[] = '%s';
+        }
+        if (isset($snippet_data['tags'])) {
+            $update_data['tags'] = sanitize_text_field($snippet_data['tags']);
+            $format[] = '%s';
+        }
+
+        if (empty($update_data)) {
+            return true; // No data to update
         }
         
-        return $snippets;
+        $result = $wpdb->update(
+            $this->table_name,
+            $update_data,
+            ['id' => $snippet_id],
+            $format,
+            ['%d']
+        );
+
+        if ($result !== false) {
+            return true;
+        } else {
+            return new WP_Error('db_update_error', 'Failed to update code snippet.', $wpdb->last_error);
+        }
     }
 
-    public function get_snippet($snippet_id) {
-        $file = $this->snippets_dir . '/' . $snippet_id;
-        if (!file_exists($file)) {
-            return null;
+    /**
+     * Deletes a code snippet by ID.
+     *
+     * @param int $snippet_id The ID of the code snippet to delete.
+     * @return bool|WP_Error Returns true on success, or WP_Error on failure.
+     */
+    public function delete_code_snippet($snippet_id) {
+        global $wpdb;
+        $result = $wpdb->delete(
+            $this->table_name,
+            ['id' => $snippet_id],
+            ['%d']
+        );
+
+        if ($result !== false) {
+            return true;
+        } else {
+            return new WP_Error('db_delete_error', 'Failed to delete code snippet.', $wpdb->last_error);
         }
-        
-        return json_decode(file_get_contents($file), true);
     }
 
-    public function code_snippets_shortcode($atts) {
-        ob_start(); ?>
-        <div class="adversarial-code-snippets">
-            <h2><?php esc_html_e('Code Snippets Library', 'adversarial-code-generator'); ?></h2>
-            
-            <div class="snippet-actions">
-                <button class="button button-primary add-snippet"><?php esc_html_e('Add New Snippet', 'adversarial-code-generator'); ?></button>
-            </div>
-            
-            <div class="snippets-list">
-                <?php
-                $snippets = $this->get_snippets();
-                if (empty($snippets)) {
-                    echo '<p>' . esc_html__('No snippets found', 'adversarial-code-generator') . '</p>';
-                } else {
-                    foreach ($snippets as $snippet) {
-                        ?>
-                        <div class="snippet-item">
-                            <h3><?php echo esc_html($snippet['title']); ?></h3>
-                            <div class="snippet-meta">
-                                <span class="snippet-language"><?php printf(__('Language: %s', 'adversarial-code-generator'), esc_html($snippet['language'])); ?></span>
-                                <span class="snippet-date"><?php echo esc_html($snippet['date']); ?></span>
-                            </div>
-                            <div class="snippet-code">
-                                <pre><code class="language-<?php echo esc_attr($snippet['language']); ?>"><?php echo esc_html($snippet['code']); ?></code></pre>
-                            </div>
-                            <div class="snippet-tags">
-                                <?php foreach ($snippet['tags'] as $tag): ?>
-                                    <span class="tag"><?php echo esc_html($tag); ?></span>
-                                <?php endforeach; ?>
-                            </div>
-                            <div class="snippet-actions">
-                                <button class="button copy-snippet" data-id="<?php echo esc_attr($snippet['id']); ?>">
-                                    <?php esc_html_e('Copy Snippet', 'adversarial-code-generator'); ?>
-                                </button>
-                                <button class="button insert-snippet" data-id="<?php echo esc_attr($snippet['id']); ?>">
-                                    <?php esc_html_e('Insert into Editor', 'adversarial-code-generator'); ?>
-                                </button>
-                            </div>
-                        </div>
-                        <?php
-                    }
-                }
-                ?>
-            </div>
-            
-            <div class="add-snippet-modal" style="display: none;">
-                <h3><?php esc_html_e('Add New Code Snippet', 'adversarial-code-generator'); ?></h3>
-                <form method="post" class="add-snippet-form">
-                    <?php wp_nonce_field('adversarial_add_snippet', 'adversarial_nonce'); ?>
-                    <div class="form-group">
-                        <label for="snippet_title"><?php esc_html_e('Title:', 'adversarial-code-generator'); ?></label>
-                        <input type="text" id="snippet_title" name="snippet_title" class="regular-text" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="snippet_code"><?php esc_html_e('Code:', 'adversarial-code-generator'); ?></label>
-                        <div class="code-editor-wrapper snippet-code" data-language="python" data-theme="monokai" style="height: 200px;"></div>
-                        <input type="hidden" class="snippet-code-value" name="snippet_code_value" value="">
-                    </div>
-                    <div class="form-group">
-                        <label for="snippet_language"><?php esc_html_e('Language:', 'adversarial-code-generator'); ?></label>
-                        <select id="snippet_language" name="snippet_language" class="regular-text">
-                            <option value="python" selected>Python</option>
-                            <option value="javascript">JavaScript</option>
-                            <option value="java">Java</option>
-                            <option value="php">PHP</option>
-                            <option value="cpp">C++</option>
-                            <option value="csharp">C#</option>
-                            <option value="go">Go</option>
-                            <option value="ruby">Ruby</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="snippet_tags"><?php esc_html_e('Tags (comma separated):', 'adversarial-code-generator'); ?></label>
-                        <input type="text" id="snippet_tags" name="snippet_tags" class="regular-text">
-                    </div>
-                    <button type="submit" class="button button-primary"><?php esc_html_e('Save Snippet', 'adversarial-code-generator'); ?></button>
-                    <button type="button" class="button cancel-add-snippet"><?php esc_html_e('Cancel', 'adversarial-code-generator'); ?></button>
-                </form>
-            </div>
-        </div>
-        <?php
-        return ob_get_clean();
+    /**
+     * Lists code snippets, with optional filters and pagination.
+     *
+     * @param array $filters Array of filters (e.g., 'language', 'tags', 'search_term').
+     * @param array $pagination Array for pagination (e.g., 'page', 'per_page').
+     * @return array Returns an array of code snippet data arrays.
+     */
+    public function list_code_snippets($filters = [], $pagination = []) {
+        global $wpdb;
+        $query = "SELECT * FROM $this->table_name WHERE 1=1";
+        $prepare_args = [];
+
+        if (!empty($filters['language'])) {
+            $query .= " AND language = %s";
+            $prepare_args[] = sanitize_key($filters['language']);
         }
+        if (!empty($filters['tags'])) {
+            $query .= " AND tags LIKE %s";
+            $prepare_args[] = '%' . $wpdb->esc_like(sanitize_text_field($filters['tags'])) . '%';
         }
+        if (!empty($filters['search_term'])) {
+            $query .= " AND (code LIKE %s OR description LIKE %s OR name LIKE %s OR tags LIKE %s)";
+            $search_pattern = '%' . $wpdb->esc_like(sanitize_text_field($filters['search_term'])) . '%';
+            $prepare_args = array_merge($prepare_args, [$search_pattern, $search_pattern, $search_pattern, $search_pattern]);
+        }
+
+        $query .= " ORDER BY updated_at DESC";
+
+        if (!empty($pagination['per_page']) && intval($pagination['per_page']) > 0) {
+            $per_page = intval($pagination['per_page']);
+            $page = isset($pagination['page']) && intval($pagination['page']) > 0 ? intval($pagination['page']) : 1;
+            $offset = ($page - 1) * $per_page;
+            $query .= " LIMIT %d OFFSET %d";
+            $prepare_args = array_merge($prepare_args, [$per_page, $offset]);
+        }
+
+        return $wpdb->get_results(
+            $wpdb->prepare($query, $prepare_args),
+            ARRAY_A
+        );
+    }
+
+    // Implement functions for code snippet categories/tags and import/export if needed.
+}
+new CodeSnippets();
